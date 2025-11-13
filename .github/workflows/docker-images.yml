@@ -1,0 +1,93 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # allows pushing to GHCR using GITHUB_TOKEN
+    strategy:
+      matrix:
+        service: [ backend, frontend ]
+    env:
+      REGISTRY: ghcr.io
+      REPO_OWNER: ${{ github.repository_owner }}
+      COMMIT_SHORT: ${{ github.sha }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (backend only)
+        if: matrix.service == 'backend'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Node (frontend only)
+        if: matrix.service == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          IMAGE_NAME="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/employee-management-system-${{ matrix.service }}"
+          TAG_SHA="sha-${{ github.sha }}"
+          TAG_LATEST="latest"
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "TAG_SHA=$TAG_SHA" >> $GITHUB_OUTPUT
+          echo "TAG_LATEST=$TAG_LATEST" >> $GITHUB_OUTPUT
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service == 'backend' && 'ems-backend/ems-backend' || 'ems-fullstack' }}
+          file: ${{ matrix.service == 'backend' && 'ems-backend/ems-backend/Dockerfile' || 'ems-fullstack/Dockerfile' }}
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_SHA }}
+            ${{ steps.meta.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_LATEST }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp || github.run_id }}
+
+      - name: Summary
+        run: |
+          echo "Pushed ${{ steps.meta.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.TAG_SHA }} and :latest"
+
+  compose-test:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull images
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/employee-management-system-backend:latest
+          docker pull ghcr.io/${{ github.repository_owner }}/employee-management-system-frontend:latest
+      - name: Show images
+        run: docker images | grep employee-management-system
