@@ -1,0 +1,48 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: ems-mysql
+    environment:
+      MYSQL_DATABASE: employee
+      MYSQL_USER: ems_user
+      MYSQL_PASSWORD: ems_pass
+      MYSQL_ROOT_PASSWORD: rootpass
+    command: ["mysqld", "--default-authentication-plugin=mysql_native_password"]
+    volumes:
+      - ems_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -prootpass --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./ems-backend/ems-backend
+      dockerfile: Dockerfile
+    container_name: ems-backend
+    environment:
+      DB_URL: jdbc:mysql://db:3306/employee?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: ems_user
+      DB_PASSWORD: ems_pass
+      # Optional: tune JVM
+      JAVA_OPTS: -Xms256m -Xmx512m
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./ems-fullstack
+      dockerfile: Dockerfile
+    container_name: ems-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  ems_mysql_data:
+    driver: local
