@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # EMS Employee Management System with React JS and Spring Boot👨‍💻
 
  1. This comprehensive system provides a robust and efficient platform for managing employee data and operations. 
@@ -42,3 +43,6 @@
 =>Deployment:
 
   6. Deploy the back-end application to a suitable server environment (e.g., Tomcat) and the front-end application to a web hosting platform.
+=======
+# Employee-Management-System
+>>>>>>> d98a3b7270cdb7252f467f1c0b146efbc0ac3396
