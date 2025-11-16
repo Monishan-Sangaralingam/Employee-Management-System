@@ -1,134 +1,75 @@
-// Jenkins Declarative Pipeline for building & pushing Docker images to GHCR
-// Prerequisites on the Jenkins agent/controller:
-// - Docker CLI + daemon available
-// - Jenkins credential (Username with password) containing GHCR username and PAT with read/write:packages
-//   Set the ID of that credential below via GHCR_CREDENTIALS_ID.
-
 pipeline {
-	agent any
+    agent any
 
-	options {
-		timestamps()
-		ansiColor('xterm')
-		buildDiscarder(logRotator(numToKeepStr: '20'))
-		disableConcurrentBuilds()
-	}
+    options {
+        timestamps()
+        ansiColor('xterm')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+    }
 
-	environment {
-		REGISTRY              = 'ghcr.io'
-		IMAGE_OWNER           = 'monishan-sangaralingam'  // change if pushing to another org/user
-		BACKEND_IMAGE_NAME    = 'employee-management-system-backend'
-		FRONTEND_IMAGE_NAME   = 'employee-management-system-frontend'
-		BACKEND_CONTEXT       = 'ems-backend/ems-backend'
-		FRONTEND_CONTEXT      = 'ems-fullstack'
-		GHCR_CREDENTIALS_ID   = 'ghcr-credentials'        // Jenkins creds ID (username = GHCR user, password = PAT)
-	}
+    environment {
+        REGISTRY = 'docker.io'
+        DOCKERHUB_USER = 'monishan8130'         // your Docker Hub username
+        BACKEND_IMAGE = "${DOCKERHUB_USER}/ems-backend"
+        FRONTEND_IMAGE = "${DOCKERHUB_USER}/ems-frontend"
+        BACKEND_CONTEXT = 'ems-backend/ems-backend'
+        FRONTEND_CONTEXT = 'ems-fullstack'
+        DOCKERHUB_CRED_ID = 'dockerhub-cred'    // Jenkins credentials ID
+    }
 
-	stages {
-		stage('Checkout') {
-			steps {
-				checkout scm
-				script {
-					echo "Branch: ${env.BRANCH_NAME ?: 'unknown'}"
-				}
-			}
-		}
+    stages {
 
-		stage('Resolve metadata') {
-			steps {
-				script {
-					env.OWNER_LC = env.IMAGE_OWNER.toLowerCase()
-					env.SHORT_SHA = sh(script: 'git rev-parse --short=12 HEAD', returnStdout: true).trim()
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-					env.BACKEND_TAG_LATEST = "${env.REGISTRY}/${env.OWNER_LC}/${env.BACKEND_IMAGE_NAME}:latest"
-					env.BACKEND_TAG_SHA    = "${env.REGISTRY}/${env.OWNER_LC}/${env.BACKEND_IMAGE_NAME}:sha-${env.SHORT_SHA}"
-					env.FRONTEND_TAG_LATEST = "${env.REGISTRY}/${env.OWNER_LC}/${env.FRONTEND_IMAGE_NAME}:latest"
-					env.FRONTEND_TAG_SHA    = "${env.REGISTRY}/${env.OWNER_LC}/${env.FRONTEND_IMAGE_NAME}:sha-${env.SHORT_SHA}"
+        stage('Prepare Tags') {
+            steps {
+                script {
+                    env.SHORT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.BACKEND_TAG_LATEST = "${BACKEND_IMAGE}:latest"
+                    env.BACKEND_TAG_SHA = "${BACKEND_IMAGE}:${SHORT_SHA}"
+                    env.FRONTEND_TAG_LATEST = "${FRONTEND_IMAGE}:latest"
+                    env.FRONTEND_TAG_SHA = "${FRONTEND_IMAGE}:${SHORT_SHA}"
+                }
+            }
+        }
 
-					echo "Backend tags:  ${env.BACKEND_TAG_LATEST}, ${env.BACKEND_TAG_SHA}"
-					echo "Frontend tags: ${env.FRONTEND_TAG_LATEST}, ${env.FRONTEND_TAG_SHA}"
-				}
-			}
-		}
+        stage('Docker Build') {
+            steps {
+                script {
+                    sh "docker build -t ${BACKEND_TAG_LATEST} -t ${BACKEND_TAG_SHA} ${BACKEND_CONTEXT}"
+                    sh "docker build -t ${FRONTEND_TAG_LATEST} -t ${FRONTEND_TAG_SHA} ${FRONTEND_CONTEXT}"
+                }
+            }
+        }
 
-		stage('Sanity: Docker available') {
-			steps {
-				script {
-					if (isUnix()) {
-						sh 'docker version'
-						sh 'docker info | head -n 50 || true'
-					} else {
-						bat 'docker version'
-						bat 'docker info'
-					}
-				}
-			}
-		}
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: DOCKERHUB_CRED_ID, usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh "echo $PASS | docker login -u $USER --password-stdin"
+                }
+            }
+        }
 
-		stage('Build images') {
-			steps {
-				script {
-					if (isUnix()) {
-						sh "docker build -t ${env.BACKEND_TAG_LATEST} -t ${env.BACKEND_TAG_SHA} -f ${env.BACKEND_CONTEXT}/Dockerfile ${env.BACKEND_CONTEXT}"
-						sh "docker build -t ${env.FRONTEND_TAG_LATEST} -t ${env.FRONTEND_TAG_SHA} -f ${env.FRONTEND_CONTEXT}/Dockerfile ${env.FRONTEND_CONTEXT}"
-					} else {
-						bat "docker build -t ${env.BACKEND_TAG_LATEST} -t ${env.BACKEND_TAG_SHA} -f ${env.BACKEND_CONTEXT}\\Dockerfile ${env.BACKEND_CONTEXT}"
-						bat "docker build -t ${env.FRONTEND_TAG_LATEST} -t ${env.FRONTEND_TAG_SHA} -f ${env.FRONTEND_CONTEXT}\\Dockerfile ${env.FRONTEND_CONTEXT}"
-					}
-				}
-			}
-		}
+        stage('Push Images') {
+            steps {
+                script {
+                    sh "docker push ${BACKEND_TAG_LATEST}"
+                    sh "docker push ${BACKEND_TAG_SHA}"
+                    sh "docker push ${FRONTEND_TAG_LATEST}"
+                    sh "docker push ${FRONTEND_TAG_SHA}"
+                }
+            }
+        }
+    }
 
-		stage('Login to GHCR') {
-			steps {
-				withCredentials([usernamePassword(credentialsId: env.GHCR_CREDENTIALS_ID, usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_PAT')]) {
-					script {
-						if (isUnix()) {
-							sh "echo \"$GHCR_PAT\" | docker login ${env.REGISTRY} -u \"$GHCR_USER\" --password-stdin"
-						} else {
-							bat "echo %GHCR_PAT% | docker login ${env.REGISTRY} -u %GHCR_USER% --password-stdin"
-						}
-					}
-				}
-			}
-		}
-
-		stage('Push images') {
-			steps {
-				script {
-					if (isUnix()) {
-						sh "docker push ${env.BACKEND_TAG_LATEST}"
-						sh "docker push ${env.BACKEND_TAG_SHA}"
-						sh "docker push ${env.FRONTEND_TAG_LATEST}"
-						sh "docker push ${env.FRONTEND_TAG_SHA}"
-					} else {
-						bat "docker push ${env.BACKEND_TAG_LATEST}"
-						bat "docker push ${env.BACKEND_TAG_SHA}"
-						bat "docker push ${env.FRONTEND_TAG_LATEST}"
-						bat "docker push ${env.FRONTEND_TAG_SHA}"
-					}
-				}
-			}
-		}
-	}
-
-	post {
-		success {
-			echo "Images pushed: ${env.BACKEND_TAG_LATEST}, ${env.BACKEND_TAG_SHA}, ${env.FRONTEND_TAG_LATEST}, ${env.FRONTEND_TAG_SHA}"
-		}
-		failure {
-			echo 'Build failed. Check previous logs for errors.'
-		}
-		always {
-			script {
-				// Avoid leaving auth state on shared agents
-				if (isUnix()) {
-					sh 'docker logout ${REGISTRY} || true'
-				} else {
-					bat 'docker logout ${REGISTRY}'
-				}
-			}
-		}
-	}
+    post {
+        always {
+            sh "docker logout"
+        }
+    }
 }
-
