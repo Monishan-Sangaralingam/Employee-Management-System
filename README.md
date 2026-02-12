@@ -1,101 +1,175 @@
-# Employee Management System (Spring Boot + React + Docker + GHCR)
+# Employee Management System
 
-Full‑stack employee management CRUD application built with Spring Boot (Java 17), React (Vite), MySQL, and containerized with Docker. Images are published to GitHub Container Registry (GHCR) via GitHub Actions.
+Full‑stack employee management system with a Spring Boot (Java 17) backend, a React (Vite) frontend served by Nginx, and MySQL for persistence. Docker Compose orchestrates the services for local runs.
 
-## Features
-- Create, list, update, delete employees
-- Unique email constraint
-- REST API under `/api/emp`
-- React SPA with routing and Bootstrap styling
-- Multi‑stage Docker builds (backend & frontend)
-- `docker-compose` orchestration with MySQL healthcheck
-- GitHub Actions workflow builds & pushes images to GHCR
-
-## Technology Stack
-- Backend: Spring Boot 3.2 + Spring Data JPA + Hibernate
-- Frontend: React 18 + Vite + Axios + React Router
+## Project Overview
+- Backend: REST API + JWT auth + payroll/leave/attendance logic
+- Frontend: React SPA (Vite build) served by Nginx
 - Database: MySQL 8
-- Container: Docker / Docker Compose
-- CI/CD: GitHub Actions + GHCR
+- Orchestration: Docker Compose (MySQL healthcheck + optional Adminer)
+
+## Architecture
+
+```
+                ┌───────────────────────────────┐
+Browser         │  React (Vite) SPA             │
+http://localhost│  served by Nginx              │
+5173            └───────────────┬───────────────┘
+                                │ HTTP
+                                ▼
+                         ┌───────────────┐
+                         │ Spring Boot   │
+                         │ ems-backend   │
+                         │ :8090         │
+                         └───────┬───────┘
+                                 │ JDBC
+                                 ▼
+                         ┌───────────────┐
+                         │ MySQL 8       │
+                         │ employee DB   │
+                         └───────────────┘
+
+Auth: JWT (Bearer token) between Browser ↔ Backend
+Compose: mysql + redis + ems-backend + ems-frontend (+ adminer optional)
+Uploads: host ./data/uploads → container /data/uploads
+```
+
+## Quickstart (Docker Compose)
+
+Create a `.env` file in the repo root (required for secrets):
+
+```env
+JWT_SECRET=change-me-to-a-long-random-secret
+MYSQL_ROOT_PASSWORD=change-me
+MYSQL_PASSWORD=change-me
+# optional:
+# MYSQL_USER=ems_user
+# MYSQL_DATABASE=employee
+```
+
+Build + run everything:
+
+```powershell
+docker compose up -d --build
+docker compose ps
+```
+
+Open:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8090`
+
+Optional (DB browser via Adminer):
+
+```powershell
+docker compose --profile tools up -d --build
+```
+
+Adminer UI:
+- `http://localhost:8081`
+- Server: `mysql`
+- Username: value of `MYSQL_USER` (default `ems_user`)
+- Password: value of `MYSQL_PASSWORD`
+- Database: value of `MYSQL_DATABASE` (default `employee`)
+
+Stop:
+
+```powershell
+docker compose down
+```
 
 ## Local Development (non-Docker)
+
 Backend:
+
 ```powershell
 cd ems-backend/ems-backend
 ./mvnw spring-boot:run
 ```
+
 Frontend:
+
 ```powershell
 cd ems-fullstack
 npm install
 npm run dev
 ```
-Visit: `http://localhost:5173`
 
-## Docker (Local)
-Build & run everything:
-```powershell
-docker compose up -d --build
-docker compose ps
-```
-Stop:
-```powershell
-docker compose down
-```
+## Major API Endpoints
 
-## GitHub Container Registry (GHCR)
-Images (after successful workflow run):
-```
-ghcr.io/<owner-lowercase>/employee-management-system-backend:latest
-ghcr.io/<owner-lowercase>/employee-management-system-frontend:latest
-```
+Full list: see ENDPOINTS.md.
 
-### Pulling Images
-If packages are private, authenticate first:
-```powershell
-echo YOUR_PAT | docker login ghcr.io -u <owner-lowercase> --password-stdin
-```
-Pull:
-```powershell
-docker pull ghcr.io/<owner-lowercase>/employee-management-system-backend:latest
-docker pull ghcr.io/<owner-lowercase>/employee-management-system-frontend:latest
+- Auth: `POST /api/auth/login`, `POST /api/auth/register`
+- Employees: `GET/POST /api/emp`, `GET/PUT/DELETE /api/emp/{id}`, `GET /api/emp/email-id/{mail}`
+- Documents: `POST /api/emp/{id}/documents`, `GET /api/emp/{id}/documents/{docId}`
+- Attendance: `POST /api/attendance/me/check-in`, `POST /api/attendance/me/check-out`, `GET /api/attendance/me/monthly`
+- Leave: `POST /api/leave/me/apply`, `GET /api/leave/me`, `GET /api/leave/pending`, `PUT /api/leave/{id}/decide`
+- Payroll: `POST /api/payroll/employee/{employeeId}/generate`, `GET /api/payroll/{id}/pdf`
+- Dashboard: `GET /api/dashboard`
+- Audit: `GET /api/audit` (admin)
+
+### Example curl
+
+Login (gets JWT token):
+
+```bash
+curl -s -X POST http://localhost:8090/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"secret"}'
 ```
 
-Run backend (using a local MySQL):
-```powershell
-docker run --rm -p 8080:8080 ^
-  -e DB_URL="jdbc:mysql://host.docker.internal:3306/employee?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC" ^
-  -e DB_USER=Monishan ^
-  -e DB_PASSWORD=Moni@998130 ^
-  ghcr.io/<owner-lowercase>/employee-management-system-backend:latest
-```
-Run frontend:
-```powershell
-docker run --rm -p 5173:80 ghcr.io/<owner-lowercase>/employee-management-system-frontend:latest
+List employees:
+
+```bash
+curl -s http://localhost:8090/api/emp
 ```
 
-### Making Packages Public
-GitHub → Repository → Packages → Select package → Package Settings → Change visibility to Public.
+Create employee (requires roles like ADMIN/HR):
 
-## CI Workflow Summary
-Workflow file: `.github/workflows/docker-images.yml`
-- Builds backend & frontend separately.
-- Tags: `latest` and `sha-<fullsha>`.
-- Requires no extra secrets (uses `GITHUB_TOKEN`).
-
-## Environment Variables (Backend)
-Configured in `application.properties` via placeholders:
+```bash
+TOKEN="<paste-jwt>"
+curl -s -X POST http://localhost:8090/api/emp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}'
 ```
-DB_URL, DB_USER, DB_PASSWORD
+
+Employee check-in (authenticated user with linked employee):
+
+```bash
+TOKEN="<paste-jwt>"
+curl -s -X POST http://localhost:8090/api/attendance/me/check-in \
+  -H "Authorization: Bearer $TOKEN"
 ```
-Defaults still support local dev if env vars are missing.
 
-## Next Improvements (Optional)
-- Remove deprecated dialect property (Hibernate auto-detects).
-- Add integration tests for controller.
-- Add seed data via `data.sql` for demo.
-- Add security (Spring Security / JWT) if authentication required.
-- Add Docker build cache with `cache-from` / `cache-to` in workflow.
+## Environment Variables
 
----
-Generated & maintained with automated assistance.
+Backend reads configuration from environment variables (see `application.properties`). Docker Compose sets these for local runs.
+
+| Variable | Example | Used For |
+|---|---:|---|
+| `DB_URL` | `jdbc:mysql://mysql:3306/employee?...` | MySQL JDBC URL |
+| `DB_USER` | `ems_user` | DB username (from `MYSQL_USER` in Compose) |
+| `DB_PASSWORD` | `***` | DB password (from `MYSQL_PASSWORD` in Compose) |
+| `JWT_SECRET` | `change-me-...` | JWT signing secret |
+| `JWT_TTL_MS` | `3600000` | JWT TTL in ms |
+| `EPF_EMPLOYEE_PERCENT` | `8` | EPF employee % |
+| `EPF_EMPLOYER_PERCENT` | `12` | EPF employer % |
+| `UPLOAD_DIR` | `/data/uploads` | Upload storage path |
+| `MAX_FILE_SIZE` | `10MB` | Max file size |
+| `MAX_REQUEST_SIZE` | `10MB` | Max multipart request size |
+| `JAVA_OPTS` | `-Xms256m -Xmx512m` | JVM tuning |
+
+Uploads are persisted on the host:
+- `./data/uploads` is mounted into the backend at `/data/uploads`.
+
+## Troubleshooting (Minimal)
+
+- Docker not running: start Docker Desktop (Windows) and retry `docker compose up -d --build`.
+- Ports in use: ensure `8090`, `5173`, and (optional) `8081` are free.
+- MySQL takes time to start: backend waits for MySQL healthcheck; use `docker compose logs -f mysql`.
+- Login succeeds but attendance/leave endpoints fail with “No employee linked…”: the logged-in `User` must be linked to an `Employee`.
+
+## Documentation
+
+- ENDPOINTS.md: full API reference and curl examples.
+- SECURITY.md: security hardening notes and audit commands.
