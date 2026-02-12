@@ -18,13 +18,14 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<Employee> createEmployee(@RequestBody Employee employee) {
         Employee emp = employeeService.addEmployee(employee);
         return new ResponseEntity<>(emp, HttpStatus.CREATED);
     }
 
     @GetMapping(path = "/{id}")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('HR') or #id == principal.employee.id")
     public ResponseEntity<Employee> findEmployeeById(@PathVariable("id") Long id) {
         Employee emp = employeeService.findEmployeeById(id);
         return ResponseEntity.ok(emp);
@@ -37,7 +38,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('HR') or #id == principal.employee.id")
     public ResponseEntity<Employee> updateEmployee(@PathVariable("id") Long id,
             @RequestBody Employee updateEmployee) {
         Employee emp = employeeService.updateEmployee(id, updateEmployee);
@@ -45,7 +46,7 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<String> deleteById(@PathVariable("id") Long id) {
         employeeService.deleteEmployeeById(id);
         return ResponseEntity.ok("Employee Deleted Successfully");
