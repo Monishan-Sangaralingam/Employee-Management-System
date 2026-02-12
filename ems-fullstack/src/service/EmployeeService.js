@@ -1,16 +1,31 @@
 import axios from "axios";
 
-const URL = "http://localhost:8080/api/emp";
+import { getToken } from "./AuthService";
 
-export const listEmployees = () => axios.get(URL);
+const api = axios.create({
+    baseURL: "http://localhost:8080",
+});
 
-export const savedEmployee = (employee) => axios.post(URL, employee);
+api.interceptors.request.use((config) => {
+    const token = getToken();
+    if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+const URL = "/api/emp";
+
+export const listEmployees = () => api.get(URL);
+
+export const savedEmployee = (employee) => api.post(URL, employee);
 
 export const editEmployee = (employeeid) => {
-    return axios.get(URL + '/' + employeeid);
+    return api.get(URL + '/' + employeeid);
 }
 
 export const updateDataEmployee = (employeeid, employee) => {
-    return axios.put(URL + '/' + employeeid, employee);
+    return api.put(URL + '/' + employeeid, employee);
 }
-export const deleteEmployee = (employeeId) => axios.delete(URL + '/' + employeeId);
+export const deleteEmployee = (employeeId) => api.delete(URL + '/' + employeeId);

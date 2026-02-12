@@ -49,8 +49,13 @@ public class AuthController {
                 .map(a -> a.startsWith("ROLE_") ? a.substring("ROLE_".length()) : a)
                 .collect(Collectors.toSet());
 
-        String token = jwtUtils.generateToken(username, roles);
-        return ResponseEntity.ok(new LoginResponse(token, username, roles));
+        Long employeeId = userRepository.findByUsername(username)
+                .map(User::getEmployee)
+                .map(Employee::getId)
+                .orElse(null);
+
+        String token = jwtUtils.generateToken(username, roles, employeeId);
+        return ResponseEntity.ok(new LoginResponse(token, username, roles, employeeId));
     }
 
     @PostMapping("/register")

@@ -24,18 +24,30 @@ public class JwtUtils {
         this.ttlMs = ttlMs;
     }
 
-    public String generateToken(String username, Set<String> roles) {
+    public String generateToken(String username, Set<String> roles, Long employeeId) {
         Instant now = Instant.now();
         Date issuedAt = Date.from(now);
         Date expiry = Date.from(now.plusMillis(ttlMs));
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(username)
                 .claim("roles", roles)
                 .issuedAt(issuedAt)
                 .expiration(expiry)
+
+                ;
+
+        if (employeeId != null) {
+            builder = builder.claim("employeeId", employeeId);
+        }
+
+        return builder
                 .signWith(signingKey)
                 .compact();
+    }
+
+    public String generateToken(String username, Set<String> roles) {
+        return generateToken(username, roles, null);
     }
 
     public boolean isTokenValid(String token) {
