@@ -2,6 +2,7 @@ package com.employeesystem.emsbackend.service;
 
 import com.employeesystem.emsbackend.entity.Employee;
 import com.employeesystem.emsbackend.entity.EmployeeDocument;
+import com.employeesystem.emsbackend.audit.Auditable;
 import com.employeesystem.emsbackend.exception.BadRequestException;
 import com.employeesystem.emsbackend.exception.ResourceNotFoundException;
 import com.employeesystem.emsbackend.repository.EmployeeDocumentRepository;
@@ -37,6 +38,7 @@ public class EmployeeDocumentService {
     }
 
     @Transactional
+    @Auditable(action = "CREATE", entity = "EmployeeDocument")
     public EmployeeDocument upload(Long employeeId, MultipartFile file, String uploadedBy) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("file is required");

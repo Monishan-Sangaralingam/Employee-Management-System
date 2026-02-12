@@ -1,6 +1,6 @@
 services:
-  db:
-    image: mysql:8.0
+  mysql:
+    image: mysql:8.0.36
     container_name: ems-mysql
     environment:
       MYSQL_DATABASE: employee
@@ -16,32 +16,57 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
+  redis:
+    image: redis:7-alpine
+    container_name: ems-redis
+
+  ems-backend:
     build:
       context: ./ems-backend/ems-backend
       dockerfile: Dockerfile
     container_name: ems-backend
     environment:
-      DB_URL: jdbc:mysql://db:3306/employee?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://mysql:3306/employee?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USER: ems_user
       DB_PASSWORD: ems_pass
+
+      UPLOAD_DIR: /data/uploads
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-dev-secret-change-me}
+      JWT_TTL_MS: ${JWT_TTL_MS:-3600000}
+      EPF_EMPLOYEE_PERCENT: ${EPF_EMPLOYEE_PERCENT:-8}
+      EPF_EMPLOYER_PERCENT: ${EPF_EMPLOYER_PERCENT:-12}
+
       # Optional: tune JVM
       JAVA_OPTS: -Xms256m -Xmx512m
+    volumes:
+      - ./data/uploads:/data/uploads
     depends_on:
-      db:
+      mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "8080:8080"
 
-  frontend:
+  ems-frontend:
     build:
       context: ./ems-fullstack
       dockerfile: Dockerfile
     container_name: ems-frontend
     depends_on:
-      - backend
+      - ems-backend
     ports:
       - "5173:80"
+
+  adminer:
+    image: adminer:4
+    container_name: ems-adminer
+    profiles: ["tools"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
 
 volumes:
   ems_mysql_data:

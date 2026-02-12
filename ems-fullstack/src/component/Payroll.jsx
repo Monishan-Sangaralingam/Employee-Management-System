@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 
 import { editEmployee } from '../service/EmployeeService';
 import { downloadPayslipPdf, generatePayroll } from '../service/PayrollService';
+import { useToasts } from './ToastProvider';
 
 function parseContentDispositionFilename(contentDisposition) {
   if (!contentDisposition) return null;
@@ -15,6 +16,7 @@ function parseContentDispositionFilename(contentDisposition) {
 }
 
 function Payroll() {
+  const { pushToast } = useToasts();
   const [employeeId, setEmployeeId] = useState('');
   const [period, setPeriod] = useState('');
   const [allowances, setAllowances] = useState('');
@@ -62,10 +64,12 @@ function Payroll() {
       const res = await editEmployee(parsed.id);
       setEmployee(res.data);
       setSuccess('Employee loaded');
+      pushToast({ type: 'success', message: 'Employee loaded' });
     } catch (err) {
       setEmployee(null);
       const message = err?.response?.data?.message || 'Failed to load employee';
       setError(message);
+      pushToast({ type: 'error', message });
     } finally {
       setIsOpening(false);
     }
@@ -88,9 +92,11 @@ function Payroll() {
       const created = await generatePayroll(parsed.id, period, parsed.allowances, parsed.deductions);
       setPayroll(created);
       setSuccess('Payroll generated successfully');
+      pushToast({ type: 'success', message: 'Payroll generated successfully' });
     } catch (err) {
       const message = err?.response?.data?.message || 'Failed to generate payroll';
       setError(message);
+      pushToast({ type: 'error', message });
     } finally {
       setIsGenerating(false);
     }
@@ -116,9 +122,11 @@ function Payroll() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+      pushToast({ type: 'success', message: 'Payslip downloaded' });
     } catch (err) {
       const message = err?.response?.data?.message || 'Failed to download payslip';
       setError(message);
+      pushToast({ type: 'error', message });
     } finally {
       setIsDownloading(false);
     }
@@ -135,20 +143,27 @@ function Payroll() {
         <div className="card-body">
           <div className="row g-3 align-items-end">
             <div className="col-md-4">
-              <label className="form-label">Employee ID</label>
+              <label className="form-label" htmlFor="payroll-employee-id">Employee ID</label>
               <input
+                id="payroll-employee-id"
                 className="form-control"
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 inputMode="numeric"
                 placeholder="e.g. 1"
+                aria-label="Employee ID"
                 required
               />
             </div>
 
             <div className="col-md-4">
               <button className="btn btn-outline-primary" type="button" onClick={openEmployee} disabled={isOpening}>
-                {isOpening ? 'Opening…' : 'Open Employee'}
+                {isOpening ? (
+                  <span className="d-inline-flex align-items-center gap-2">
+                    <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                    Opening…
+                  </span>
+                ) : 'Open Employee'}
               </button>
             </div>
           </div>
@@ -167,51 +182,67 @@ function Payroll() {
           <form onSubmit={onGenerate}>
             <div className="row g-3">
               <div className="col-md-4">
-                <label className="form-label">Payroll Month</label>
+                <label className="form-label" htmlFor="payroll-month">Payroll Month</label>
                 <input
+                  id="payroll-month"
                   type="month"
                   className="form-control"
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
+                  aria-label="Payroll month"
                   required
                 />
                 <div className="form-text">Format: YYYY-MM</div>
               </div>
 
               <div className="col-md-4">
-                <label className="form-label">Allowances</label>
+                <label className="form-label" htmlFor="payroll-allowances">Allowances</label>
                 <input
+                  id="payroll-allowances"
                   type="number"
                   className="form-control"
                   value={allowances}
                   onChange={(e) => setAllowances(e.target.value)}
                   min="0"
                   step="0.01"
+                  aria-label="Allowances"
                   required
                 />
               </div>
 
               <div className="col-md-4">
-                <label className="form-label">Deductions</label>
+                <label className="form-label" htmlFor="payroll-deductions">Deductions</label>
                 <input
+                  id="payroll-deductions"
                   type="number"
                   className="form-control"
                   value={deductions}
                   onChange={(e) => setDeductions(e.target.value)}
                   min="0"
                   step="0.01"
+                  aria-label="Deductions"
                 />
               </div>
             </div>
 
             <div className="mt-3 d-flex gap-2">
               <button className="btn btn-primary" disabled={isGenerating}>
-                {isGenerating ? 'Generating…' : 'Generate Payroll'}
+                {isGenerating ? (
+                  <span className="d-inline-flex align-items-center gap-2">
+                    <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                    Generating…
+                  </span>
+                ) : 'Generate Payroll'}
               </button>
 
               {payroll?.id ? (
                 <button type="button" className="btn btn-success" onClick={onDownload} disabled={isDownloading}>
-                  {isDownloading ? 'Downloading…' : 'Download Payslip'}
+                  {isDownloading ? (
+                    <span className="d-inline-flex align-items-center gap-2">
+                      <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                      Downloading…
+                    </span>
+                  ) : 'Download Payslip'}
                 </button>
               ) : null}
             </div>

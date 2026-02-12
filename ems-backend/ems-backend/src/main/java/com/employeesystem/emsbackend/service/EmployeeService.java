@@ -1,6 +1,7 @@
 package com.employeesystem.emsbackend.service;
 
 import com.employeesystem.emsbackend.entity.Employee;
+import com.employeesystem.emsbackend.audit.Auditable;
 import com.employeesystem.emsbackend.exception.ResourceNotFoundException;
 import com.employeesystem.emsbackend.repository.EmployeeRepository;
 import lombok.AllArgsConstructor;
@@ -13,6 +14,7 @@ import java.util.List;
 public class EmployeeService {
     private final EmployeeRepository employeeRepository;
 
+    @Auditable(action = "CREATE", entity = "Employee")
     public Employee addEmployee(Employee employee) {
         return employeeRepository.save(employee);
     }
@@ -27,6 +29,7 @@ public class EmployeeService {
         return employeeRepository.findAll();
     }
 
+    @Auditable(action = "UPDATE", entity = "Employee", entityIdArgIndex = 0)
     public Employee updateEmployee(Long id, Employee updatedEmployee) {
         Employee emp = findEmployeeById(id);
         emp.setFirstName(updatedEmployee.getFirstName());
@@ -36,6 +39,7 @@ public class EmployeeService {
         return emp;
     }
 
+    @Auditable(action = "DELETE", entity = "Employee", entityIdArgIndex = 0)
     public void deleteEmployeeById(Long id) {
         boolean exist = employeeRepository.existsById(id);
         if (!exist) {

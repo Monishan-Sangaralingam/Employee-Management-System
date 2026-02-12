@@ -2,6 +2,7 @@ package com.employeesystem.emsbackend.service;
 
 import com.employeesystem.emsbackend.entity.Employee;
 import com.employeesystem.emsbackend.entity.PayrollRecord;
+import com.employeesystem.emsbackend.audit.Auditable;
 import com.employeesystem.emsbackend.exception.BadRequestException;
 import com.employeesystem.emsbackend.exception.ResourceNotFoundException;
 import com.employeesystem.emsbackend.repository.EmployeeRepository;
@@ -42,6 +43,7 @@ public class PayrollService {
     }
 
     @Transactional
+    @Auditable(action = "CREATE", entity = "PayrollRecord")
     public PayrollRecord generatePayroll(Long employeeId, PayrollGenerateRequest request) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee Id " + employeeId + " not found"));

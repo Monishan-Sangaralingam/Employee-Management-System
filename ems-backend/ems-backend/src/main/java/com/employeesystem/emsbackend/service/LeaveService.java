@@ -1,6 +1,7 @@
 package com.employeesystem.emsbackend.service;
 
 import com.employeesystem.emsbackend.entity.*;
+import com.employeesystem.emsbackend.audit.Auditable;
 import com.employeesystem.emsbackend.exception.BadRequestException;
 import com.employeesystem.emsbackend.exception.ResourceNotFoundException;
 import com.employeesystem.emsbackend.repository.EmployeeRepository;
@@ -28,6 +29,7 @@ public class LeaveService {
     private final EmployeeRepository employeeRepository;
 
     @Transactional
+    @Auditable(action = "CREATE", entity = "LeaveRequest")
     public LeaveRequest applyLeave(Long employeeId, LocalDate startDate, LocalDate endDate, LeaveType type, String note) {
         if (startDate == null || endDate == null || type == null) {
             throw new BadRequestException("startDate, endDate and type are required");
@@ -68,6 +70,7 @@ public class LeaveService {
     }
 
     @Transactional
+    @Auditable(action = "UPDATE", entity = "LeaveRequest", entityIdArgIndex = 0)
     public LeaveRequest decide(Long leaveId, LeaveStatus status, String decisionNote) {
         if (status == null || (status != LeaveStatus.APPROVED && status != LeaveStatus.REJECTED)) {
             throw new BadRequestException("status must be APPROVED or REJECTED");
