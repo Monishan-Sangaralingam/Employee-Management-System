@@ -34,25 +34,27 @@ public class EmployeeController {
         return ResponseEntity.ok(e);
     }
 
-    @PutMapping("{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Employee> updateEmployee(@PathVariable("id") Long id,
-                                                   @RequestBody Employee updateEmployee) {
+            @RequestBody Employee updateEmployee) {
         Employee emp = employeeService.updateEmployee(id, updateEmployee);
         return ResponseEntity.ok(emp);
     }
 
-    @DeleteMapping("{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteById(@PathVariable("id") Long id) {
         employeeService.deleteEmployeeById(id);
         return ResponseEntity.ok("Employee Deleted Successfully");
     }
-//    @GetMapping("/{email}")
-//    public ResponseEntity<Employee> findFirstNameAndEmail(@RequestBody String firstname,@RequestBody String email){
-//        Employee emp = employeeService.findFirstNameAndEmail(firstname,email);
-//        return ResponseEntity.ok(emp);
-//    }
+
+    // @GetMapping("/{email}")
+    // public ResponseEntity<Employee> findFirstNameAndEmail(@RequestBody String
+    // firstname,@RequestBody String email){
+    // Employee emp = employeeService.findFirstNameAndEmail(firstname,email);
+    // return ResponseEntity.ok(emp);
+    // }
     @GetMapping("/email-id/{mail}")
-    public ResponseEntity<Employee> findByEmployeeEmail(@PathVariable("mail") String email){
-       return ResponseEntity.ok(employeeService.findEmployeeByEmail(email));
+    public ResponseEntity<Employee> findByEmployeeEmail(@PathVariable("mail") String email) {
+        return ResponseEntity.ok(employeeService.findEmployeeByEmail(email));
     }
 }
