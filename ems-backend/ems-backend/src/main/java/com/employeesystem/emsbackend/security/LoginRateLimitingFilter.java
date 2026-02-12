@@ -49,8 +49,8 @@ public class LoginRateLimitingFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+            HttpServletResponse response,
+            FilterChain filterChain) throws ServletException, IOException {
         String clientIp = resolveClientIp(request);
 
         Bucket bucket = bucketsByIp.computeIfAbsent(clientIp, ip -> newBucket());
@@ -72,8 +72,7 @@ public class LoginRateLimitingFilter extends OncePerRequestFilter {
 
         Bandwidth limit = Bandwidth.classic(
                 configuredAttempts,
-                Refill.intervally(configuredAttempts, Duration.ofMinutes(configuredWindowMinutes))
-        );
+                Refill.intervally(configuredAttempts, Duration.ofMinutes(configuredWindowMinutes)));
         return Bucket.builder().addLimit(limit).build();
     }
 

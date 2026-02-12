@@ -7,8 +7,10 @@ import com.employeesystem.emsbackend.exception.ResourceNotFoundException;
 import com.employeesystem.emsbackend.repository.EmployeeRepository;
 import com.employeesystem.emsbackend.repository.UserRepository;
 import com.employeesystem.emsbackend.security.JwtUtils;
+import com.employeesystem.emsbackend.security.UserPrincipal;
 import com.employeesystem.emsbackend.web.auth.LoginRequest;
 import com.employeesystem.emsbackend.web.auth.LoginResponse;
+import com.employeesystem.emsbackend.web.auth.MeResponse;
 import com.employeesystem.emsbackend.web.auth.RegisterRequest;
 import com.employeesystem.emsbackend.web.auth.RegisterResponse;
 import lombok.AllArgsConstructor;
@@ -19,6 +21,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
@@ -57,6 +61,19 @@ public class AuthController {
         String token = jwtUtils.generateToken(username, roles, employeeId);
         return ResponseEntity.ok(new LoginResponse(token, username, roles, employeeId));
     }
+
+        @GetMapping("/me")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<MeResponse> me(@AuthenticationPrincipal UserPrincipal principal) {
+                Set<String> roles = principal.getAuthorities()
+                                .stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .map(a -> a.startsWith("ROLE_") ? a.substring("ROLE_".length()) : a)
+                                .collect(Collectors.toSet());
+
+                Long employeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
+                return ResponseEntity.ok(new MeResponse(principal.getUsername(), roles, employeeId));
+        }
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest request) {

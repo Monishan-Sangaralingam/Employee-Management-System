@@ -23,7 +23,8 @@ public abstract class MySqlTestcontainersBase {
 
     @BeforeAll
     static void ensureStarted() {
-        // no-op: just forces class init so container starts before context needs properties
+        // no-op: just forces class init so container starts before context needs
+        // properties
     }
 
     @DynamicPropertySource

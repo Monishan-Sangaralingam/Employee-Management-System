@@ -35,8 +35,7 @@ class PayrollServiceTest {
                 payrollRecordRepository,
                 employeeRepository,
                 new BigDecimal("8"),
-                new BigDecimal("12")
-        );
+                new BigDecimal("12"));
 
         Employee emp = employee(1L);
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(emp));
@@ -70,8 +69,7 @@ class PayrollServiceTest {
                 payrollRecordRepository,
                 employeeRepository,
                 new BigDecimal("8"),
-                new BigDecimal("12")
-        );
+                new BigDecimal("12"));
 
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee(1L)));
 
@@ -85,12 +83,12 @@ class PayrollServiceTest {
                 .hasMessageContaining("baseSalary cannot be negative");
     }
 
-        private Employee employee(Long id) {
-                Employee e = new Employee();
-                ReflectionTestUtils.setField(e, "id", id);
-                ReflectionTestUtils.setField(e, "firstName", "A");
-                ReflectionTestUtils.setField(e, "lastName", "B");
-                ReflectionTestUtils.setField(e, "email", "a@b.com");
-                return e;
-        }
+    private Employee employee(Long id) {
+        Employee e = new Employee();
+        ReflectionTestUtils.setField(e, "id", id);
+        ReflectionTestUtils.setField(e, "firstName", "A");
+        ReflectionTestUtils.setField(e, "lastName", "B");
+        ReflectionTestUtils.setField(e, "email", "a@b.com");
+        return e;
+    }
 }

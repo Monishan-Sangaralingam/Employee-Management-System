@@ -13,8 +13,10 @@ public @interface Auditable {
     String entity();
 
     /**
-     * Optional argument index to read the entityId from (e.g., deleteEmployeeById(Long id) => 0).
-     * If -1, the aspect will try to extract id from the returned object via getId().
+     * Optional argument index to read the entityId from (e.g.,
+     * deleteEmployeeById(Long id) => 0).
+     * If -1, the aspect will try to extract id from the returned object via
+     * getId().
      */
     int entityIdArgIndex() default -1;
 

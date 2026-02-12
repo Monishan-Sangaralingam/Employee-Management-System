@@ -2,7 +2,7 @@ import axios from 'axios';
 
 import { getToken } from './AuthService';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: 'http://localhost:8090',
 });
 
@@ -14,8 +14,3 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
-
-export async function getDashboard() {
-  const response = await api.get('/api/dashboard');
-  return response.data;
-}

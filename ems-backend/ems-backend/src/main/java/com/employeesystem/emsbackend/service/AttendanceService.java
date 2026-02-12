@@ -63,6 +63,12 @@ public class AttendanceService {
         return attendanceRepository.findByEmployeeIdAndWorkDateBetweenOrderByCheckInAsc(employeeId, start, end);
     }
 
+    public Attendance getTodayAttendance(Long employeeId) {
+        LocalDate today = LocalDate.now();
+        return attendanceRepository.findTopByEmployeeIdAndWorkDateOrderByCheckInDesc(employeeId, today)
+                .orElse(null);
+    }
+
     public Long getMonthlyTotalWorkedMinutes(Long employeeId, int year, int month) {
         YearMonth ym = YearMonth.of(year, month);
         LocalDate start = ym.atDay(1);

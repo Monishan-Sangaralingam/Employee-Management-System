@@ -43,8 +43,7 @@ class LeaveServiceTest {
                 LocalDate.of(2026, 2, 10),
                 LocalDate.of(2026, 2, 12),
                 LeaveType.UNPAID,
-                "note"
-        );
+                "note");
 
         assertThat(saved.getDays()).isEqualTo(3);
         assertThat(saved.getStatus()).isEqualTo(LeaveStatus.PENDING);
@@ -72,8 +71,7 @@ class LeaveServiceTest {
                 LocalDate.of(2026, 2, 10),
                 LocalDate.of(2026, 2, 12),
                 LeaveType.ANNUAL,
-                null
-        )).isInstanceOf(BadRequestException.class)
+                null)).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("Insufficient leave balance");
     }
 

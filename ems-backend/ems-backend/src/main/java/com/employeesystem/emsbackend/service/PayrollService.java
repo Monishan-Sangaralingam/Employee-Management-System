@@ -33,9 +33,9 @@ public class PayrollService {
     private final BigDecimal epfEmployerPercent;
 
     public PayrollService(PayrollRecordRepository payrollRecordRepository,
-                          EmployeeRepository employeeRepository,
-                          @Value("${app.payroll.epf-employee-percent}") BigDecimal epfEmployeePercent,
-                          @Value("${app.payroll.epf-employer-percent}") BigDecimal epfEmployerPercent) {
+            EmployeeRepository employeeRepository,
+            @Value("${app.payroll.epf-employee-percent}") BigDecimal epfEmployeePercent,
+            @Value("${app.payroll.epf-employer-percent}") BigDecimal epfEmployerPercent) {
         this.payrollRecordRepository = payrollRecordRepository;
         this.employeeRepository = employeeRepository;
         this.epfEmployeePercent = epfEmployeePercent;
@@ -68,7 +68,8 @@ public class PayrollService {
                 .subtract(epfEmployee)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        byte[] pdfBytes = generatePayslipPdf(employee, year, month, baseSalary, allowances, deductions, grossPay, epfEmployee, epfEmployer, netPay);
+        byte[] pdfBytes = generatePayslipPdf(employee, year, month, baseSalary, allowances, deductions, grossPay,
+                epfEmployee, epfEmployer, netPay);
 
         PayrollRecord record = new PayrollRecord();
         record.setEmployee(employee);
@@ -122,15 +123,15 @@ public class PayrollService {
     }
 
     private byte[] generatePayslipPdf(Employee employee,
-                                      int year,
-                                      int month,
-                                      BigDecimal baseSalary,
-                                      BigDecimal allowances,
-                                      BigDecimal deductions,
-                                      BigDecimal grossPay,
-                                      BigDecimal epfEmployee,
-                                      BigDecimal epfEmployer,
-                                      BigDecimal netPay) {
+            int year,
+            int month,
+            BigDecimal baseSalary,
+            BigDecimal allowances,
+            BigDecimal deductions,
+            BigDecimal grossPay,
+            BigDecimal epfEmployee,
+            BigDecimal epfEmployer,
+            BigDecimal netPay) {
         try (PDDocument document = new PDDocument(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
@@ -146,7 +147,8 @@ public class PayrollService {
                 y -= 30;
                 writeLine(content, 50, y, "Employee ID: " + employee.getId());
                 y -= 18;
-                writeLine(content, 50, y, "Employee: " + safe(employee.getFirstName()) + " " + safe(employee.getLastName()));
+                writeLine(content, 50, y,
+                        "Employee: " + safe(employee.getFirstName()) + " " + safe(employee.getLastName()));
                 y -= 18;
                 writeLine(content, 50, y, "Email: " + safe(employee.getEmail()));
                 y -= 18;

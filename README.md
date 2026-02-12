@@ -20,7 +20,7 @@ http://localhost│  served by Nginx              │
                          ┌───────────────┐
                          │ Spring Boot   │
                          │ ems-backend   │
-                         │ :8080         │
+                         │ :8090         │
                          └───────┬───────┘
                                  │ JDBC
                                  ▼
@@ -36,6 +36,17 @@ Uploads: host ./data/uploads → container /data/uploads
 
 ## Quickstart (Docker Compose)
 
+Create a `.env` file in the repo root (required for secrets):
+
+```env
+JWT_SECRET=change-me-to-a-long-random-secret
+MYSQL_ROOT_PASSWORD=change-me
+MYSQL_PASSWORD=change-me
+# optional:
+# MYSQL_USER=ems_user
+# MYSQL_DATABASE=employee
+```
+
 Build + run everything:
 
 ```powershell
@@ -45,7 +56,7 @@ docker compose ps
 
 Open:
 - Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8080`
+- Backend: `http://localhost:8090`
 
 Optional (DB browser via Adminer):
 
@@ -56,9 +67,9 @@ docker compose --profile tools up -d --build
 Adminer UI:
 - `http://localhost:8081`
 - Server: `mysql`
-- Username: `ems_user`
-- Password: `ems_pass`
-- Database: `employee`
+- Username: value of `MYSQL_USER` (default `ems_user`)
+- Password: value of `MYSQL_PASSWORD`
+- Database: value of `MYSQL_DATABASE` (default `employee`)
 
 Stop:
 
@@ -101,7 +112,7 @@ Full list: see ENDPOINTS.md.
 Login (gets JWT token):
 
 ```bash
-curl -s -X POST http://localhost:8080/api/auth/login \
+curl -s -X POST http://localhost:8090/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"secret"}'
 ```
@@ -109,14 +120,14 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 List employees:
 
 ```bash
-curl -s http://localhost:8080/api/emp
+curl -s http://localhost:8090/api/emp
 ```
 
 Create employee (requires roles like ADMIN/HR):
 
 ```bash
 TOKEN="<paste-jwt>"
-curl -s -X POST http://localhost:8080/api/emp \
+curl -s -X POST http://localhost:8090/api/emp \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}'
@@ -126,7 +137,7 @@ Employee check-in (authenticated user with linked employee):
 
 ```bash
 TOKEN="<paste-jwt>"
-curl -s -X POST http://localhost:8080/api/attendance/me/check-in \
+curl -s -X POST http://localhost:8090/api/attendance/me/check-in \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -137,8 +148,8 @@ Backend reads configuration from environment variables (see `application.propert
 | Variable | Example | Used For |
 |---|---:|---|
 | `DB_URL` | `jdbc:mysql://mysql:3306/employee?...` | MySQL JDBC URL |
-| `DB_USER` | `ems_user` | DB username |
-| `DB_PASSWORD` | `ems_pass` | DB password |
+| `DB_USER` | `ems_user` | DB username (from `MYSQL_USER` in Compose) |
+| `DB_PASSWORD` | `***` | DB password (from `MYSQL_PASSWORD` in Compose) |
 | `JWT_SECRET` | `change-me-...` | JWT signing secret |
 | `JWT_TTL_MS` | `3600000` | JWT TTL in ms |
 | `EPF_EMPLOYEE_PERCENT` | `8` | EPF employee % |
@@ -154,10 +165,11 @@ Uploads are persisted on the host:
 ## Troubleshooting (Minimal)
 
 - Docker not running: start Docker Desktop (Windows) and retry `docker compose up -d --build`.
-- Ports in use: ensure `8080`, `5173`, and (optional) `8081` are free.
+- Ports in use: ensure `8090`, `5173`, and (optional) `8081` are free.
 - MySQL takes time to start: backend waits for MySQL healthcheck; use `docker compose logs -f mysql`.
 - Login succeeds but attendance/leave endpoints fail with “No employee linked…”: the logged-in `User` must be linked to an `Employee`.
 
 ## Documentation
 
 - ENDPOINTS.md: full API reference and curl examples.
+- SECURITY.md: security hardening notes and audit commands.

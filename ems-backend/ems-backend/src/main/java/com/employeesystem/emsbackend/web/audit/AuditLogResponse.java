@@ -29,7 +29,6 @@ public class AuditLogResponse {
                 a.getEntity(),
                 a.getEntityId(),
                 a.getTimestamp(),
-                a.getDetails()
-        );
+                a.getDetails());
     }
 }

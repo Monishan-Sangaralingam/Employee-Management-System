@@ -25,8 +25,7 @@ public class AuditController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<AuditLogResponse>> list(
-            @PageableDefault(size = 50, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
+            @PageableDefault(size = 50, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<AuditLogResponse> page = auditLogRepository.findAll(pageable).map(AuditLogResponse::from);
         return ResponseEntity.ok(page);
     }

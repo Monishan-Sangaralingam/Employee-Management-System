@@ -44,8 +44,7 @@ class LeaveServiceIT extends MySqlTestcontainersBase {
                 LocalDate.of(2026, 2, 10),
                 LocalDate.of(2026, 2, 12),
                 LeaveType.ANNUAL,
-                "trip"
-        );
+                "trip");
         assertThat(req.getDays()).isEqualTo(3);
 
         LeaveRequest decided = leaveService.decide(req.getId(), LeaveStatus.APPROVED, "ok");

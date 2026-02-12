@@ -47,7 +47,7 @@ class EmployeeServiceTest {
         when(employeeRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findEmployeeById(99L))
-            .isInstanceOf(com.employeesystem.emsbackend.exception.ResourceNotFoundException.class)
+                .isInstanceOf(com.employeesystem.emsbackend.exception.ResourceNotFoundException.class)
                 .hasMessageContaining("Employee Id 99");
     }
 
@@ -56,9 +56,8 @@ class EmployeeServiceTest {
         EmployeeService service = new EmployeeService(employeeRepository);
 
         when(employeeRepository.findAll()).thenReturn(Arrays.asList(
-            employee(1L, "A", "B", "a@b.com"),
-            employee(2L, "C", "D", "c@d.com")
-        ));
+                employee(1L, "A", "B", "a@b.com"),
+                employee(2L, "C", "D", "c@d.com")));
 
         List<Employee> result = service.getAllEmployee();
 

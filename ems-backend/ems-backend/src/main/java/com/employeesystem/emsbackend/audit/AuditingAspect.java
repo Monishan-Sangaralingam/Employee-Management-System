@@ -116,7 +116,8 @@ public class AuditingAspect {
         }
 
         String msg = error.getMessage();
-        if (msg == null) msg = error.getClass().getSimpleName();
+        if (msg == null)
+            msg = error.getClass().getSimpleName();
         return "method=" + method + "; args=" + args + "; error=" + truncate(msg, 500);
     }
 
@@ -126,7 +127,8 @@ public class AuditingAspect {
         }
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < args.length; i++) {
-            if (i > 0) sb.append(", ");
+            if (i > 0)
+                sb.append(", ");
             sb.append(truncate(String.valueOf(args[i]), 200));
         }
         sb.append("]");
@@ -134,8 +136,10 @@ public class AuditingAspect {
     }
 
     private String truncate(String s, int max) {
-        if (s == null) return null;
-        if (s.length() <= max) return s;
+        if (s == null)
+            return null;
+        if (s.length() <= max)
+            return s;
         return s.substring(0, max);
     }
 }

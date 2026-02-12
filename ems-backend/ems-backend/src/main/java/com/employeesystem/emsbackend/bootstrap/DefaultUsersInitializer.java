@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.Set;
 
 @Slf4j
@@ -24,7 +25,6 @@ import java.util.Set;
 public class DefaultUsersInitializer implements ApplicationRunner {
 
     private static final String DEFAULT_ADMIN_USERNAME = "admin@local";
-    private static final String DEFAULT_ADMIN_PASSWORD = "Admin123!";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -46,9 +46,22 @@ public class DefaultUsersInitializer implements ApplicationRunner {
             return;
         }
 
-        String adminUsername = isBlank(configuredAdminUsername) ? DEFAULT_ADMIN_USERNAME : configuredAdminUsername.trim();
-        boolean usingDefaultPassword = isBlank(configuredAdminPassword);
-        String adminPassword = usingDefaultPassword ? DEFAULT_ADMIN_PASSWORD : configuredAdminPassword;
+        String adminUsername = isBlank(configuredAdminUsername) ? DEFAULT_ADMIN_USERNAME
+                : configuredAdminUsername.trim();
+        boolean passwordProvided = !isBlank(configuredAdminPassword);
+        boolean prod = isProdProfileActive();
+
+        String adminPassword;
+        if (passwordProvided) {
+            adminPassword = configuredAdminPassword;
+        } else {
+            if (prod) {
+                log.error(
+                        "CREATE_DEFAULT_USERS=true but DEFAULT_ADMIN_PASSWORD is not set while a prod profile is active. Refusing to create a default admin user.");
+                return;
+            }
+            adminPassword = generateDevPassword();
+        }
 
         Set<Role> adminRoles = EnumSet.of(Role.ADMIN, Role.HR, Role.MANAGER, Role.EMPLOYEE);
 
@@ -60,15 +73,13 @@ public class DefaultUsersInitializer implements ApplicationRunner {
             created.getRoles().addAll(adminRoles);
             userRepository.save(created);
 
-            log.warn("Created default admin user '{}' because CREATE_DEFAULT_USERS=true. Disable this in production.", adminUsername);
-            if (usingDefaultPassword) {
-                if (isProdProfileActive()) {
-                    log.warn("Default admin password was used (DEFAULT_ADMIN_PASSWORD not set). Password is NOT printed because a prod profile is active.");
-                } else {
-                    log.warn("Default admin password: {} (set DEFAULT_ADMIN_PASSWORD to override; do not use this in production)", DEFAULT_ADMIN_PASSWORD);
-                }
+            log.warn("Created default admin user '{}' because CREATE_DEFAULT_USERS=true. Disable this in production.",
+                    adminUsername);
+
+            if (passwordProvided) {
+                log.info("Default admin password was provided via DEFAULT_ADMIN_PASSWORD (not logging it). ");
             } else {
-                log.info("Default admin password was provided via DEFAULT_ADMIN_PASSWORD (not logging it).");
+                log.warn("Generated a one-time dev admin password (DEFAULT_ADMIN_PASSWORD not set): {}", adminPassword);
             }
             return;
         }
@@ -92,5 +103,10 @@ public class DefaultUsersInitializer implements ApplicationRunner {
 
     private static boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private static String generateDevPassword() {
+        // Not intended for production. Example format: Dev-<uuid>
+        return "Dev-" + UUID.randomUUID();
     }
 }

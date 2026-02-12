@@ -1,6 +1,6 @@
 # API Endpoints (Detailed)
 
-Base URL (local): `http://localhost:8080`
+Base URL (local): `http://localhost:8090`
 
 Auth is JWT Bearer for protected endpoints:
 
@@ -37,7 +37,7 @@ Response (200):
 Curl:
 
 ```bash
-curl -s -X POST http://localhost:8080/api/auth/login \
+curl -s -X POST http://localhost:8090/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"secret"}'
 ```
@@ -72,7 +72,7 @@ Lists all employees.
 Curl:
 
 ```bash
-curl -s http://localhost:8080/api/emp
+curl -s http://localhost:8090/api/emp
 ```
 
 ### POST /api/emp
@@ -93,7 +93,7 @@ Curl:
 
 ```bash
 TOKEN="<paste-jwt>"
-curl -s -X POST http://localhost:8080/api/emp \
+curl -s -X POST http://localhost:8090/api/emp \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}'
@@ -130,7 +130,7 @@ Curl:
 ```bash
 TOKEN="<paste-jwt>"
 EMP_ID=123
-curl -s -X POST "http://localhost:8080/api/emp/${EMP_ID}/documents" \
+curl -s -X POST "http://localhost:8090/api/emp/${EMP_ID}/documents" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@./somefile.pdf"
 ```
@@ -153,7 +153,7 @@ Curl:
 
 ```bash
 TOKEN="<paste-jwt>"
-curl -s -X POST http://localhost:8080/api/attendance/me/check-in \
+curl -s -X POST http://localhost:8090/api/attendance/me/check-in \
   -H "Authorization: Bearer $TOKEN"
 ```
 

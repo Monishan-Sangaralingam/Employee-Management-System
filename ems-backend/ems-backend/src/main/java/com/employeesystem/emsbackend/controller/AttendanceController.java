@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.YearMonth;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,6 +35,13 @@ public class AttendanceController {
         return ResponseEntity.ok(AttendanceResponse.from(attendance));
     }
 
+    // Alias for frontend: POST /api/attendance/checkin
+    @PostMapping("/checkin")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<AttendanceResponse> checkInAlias(@AuthenticationPrincipal UserPrincipal principal) {
+        return checkIn(principal);
+    }
+
     @PostMapping("/me/check-out")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AttendanceResponse> checkOut(@AuthenticationPrincipal UserPrincipal principal) {
@@ -43,6 +51,72 @@ public class AttendanceController {
         }
         Attendance attendance = attendanceService.checkOut(employeeId);
         return ResponseEntity.ok(AttendanceResponse.from(attendance));
+    }
+
+    // Alias for frontend: POST /api/attendance/checkout
+    @PostMapping("/checkout")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<AttendanceResponse> checkOutAlias(@AuthenticationPrincipal UserPrincipal principal) {
+        return checkOut(principal);
+    }
+
+    // Alias for frontend: GET /api/attendance/employee/{employeeId}?date=today
+    @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<AttendanceResponse> todayForEmployee(@AuthenticationPrincipal UserPrincipal principal,
+                                                              @PathVariable Long employeeId,
+                                                              @RequestParam(required = false) String date) {
+        Long principalEmployeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
+        if (principalEmployeeId == null) {
+            throw new BadRequestException("No employee linked to this user");
+        }
+
+        boolean adminOrHr = principal.getAuthorities().stream().anyMatch(a ->
+                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()));
+
+        if (!adminOrHr && !principalEmployeeId.equals(employeeId)) {
+            throw new BadRequestException("Not allowed to view other employees");
+        }
+
+        // Only 'today' is supported for now; other values return today's record as well.
+        var row = attendanceService.getTodayAttendance(employeeId);
+        return ResponseEntity.ok(row == null ? null : AttendanceResponse.from(row));
+    }
+
+    // Alias for frontend: GET /api/attendance/monthly/{yyyy-MM}
+    @GetMapping("/monthly/{yyyyMM}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<AttendanceResponse>> monthlyAlias(@AuthenticationPrincipal UserPrincipal principal,
+                                                                @PathVariable String yyyyMM,
+                                                                @RequestParam(required = false) Long employeeId) {
+        Long principalEmployeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
+        if (principalEmployeeId == null) {
+            throw new BadRequestException("No employee linked to this user");
+        }
+
+        boolean adminOrHr = principal.getAuthorities().stream().anyMatch(a ->
+                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()));
+
+        Long targetEmployeeId = principalEmployeeId;
+        if (employeeId != null) {
+            if (!adminOrHr && !principalEmployeeId.equals(employeeId)) {
+                throw new BadRequestException("Not allowed to view other employees");
+            }
+            targetEmployeeId = employeeId;
+        }
+
+        YearMonth ym;
+        try {
+            ym = YearMonth.parse(yyyyMM);
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid month format. Expected yyyy-MM");
+        }
+
+        List<AttendanceResponse> rows = attendanceService.getMonthlyAttendance(targetEmployeeId, ym.getYear(), ym.getMonthValue())
+                .stream()
+                .map(AttendanceResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(rows);
     }
 
     @GetMapping("/me/monthly")

@@ -43,7 +43,7 @@ class AttendanceServiceTest {
     @Test
     void checkIn_whenOpenAttendanceExists_throws() {
         AttendanceService service = new AttendanceService(attendanceRepository, employeeRepository);
-                when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee(1L)));
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee(1L)));
         when(attendanceRepository.findTopByEmployeeIdAndCheckOutIsNullOrderByCheckInDesc(1L))
                 .thenReturn(Optional.of(new Attendance()));
 
@@ -128,12 +128,12 @@ class AttendanceServiceTest {
         assertThat(result.getWorkedMinutes()).isEqualTo(0L);
     }
 
-        private Employee employee(Long id) {
-                Employee e = new Employee();
-                ReflectionTestUtils.setField(e, "id", id);
-                ReflectionTestUtils.setField(e, "firstName", "A");
-                ReflectionTestUtils.setField(e, "lastName", "B");
-                ReflectionTestUtils.setField(e, "email", "a@b.com");
-                return e;
-        }
+    private Employee employee(Long id) {
+        Employee e = new Employee();
+        ReflectionTestUtils.setField(e, "id", id);
+        ReflectionTestUtils.setField(e, "firstName", "A");
+        ReflectionTestUtils.setField(e, "lastName", "B");
+        ReflectionTestUtils.setField(e, "email", "a@b.com");
+        return e;
+    }
 }

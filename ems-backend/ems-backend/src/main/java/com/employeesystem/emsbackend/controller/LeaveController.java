@@ -38,6 +38,32 @@ public class LeaveController {
         return ResponseEntity.status(HttpStatus.CREATED).body(LeaveResponse.from(saved));
     }
 
+    // Alias: POST /api/leave/apply (optionally apply for a specific employeeId if caller is HR/MANAGER/ADMIN)
+    @PostMapping("/apply")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<LeaveResponse> applyAlias(@AuthenticationPrincipal UserPrincipal principal,
+                                                    @RequestParam(required = false) Long employeeId,
+                                                    @RequestBody LeaveApplyRequest request) {
+        Long principalEmployeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
+        if (principalEmployeeId == null) {
+            throw new BadRequestException("No employee linked to this user");
+        }
+
+        boolean privileged = principal.getAuthorities().stream().anyMatch(a ->
+                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()) || "ROLE_MANAGER".equals(a.getAuthority()));
+
+        Long targetEmployeeId = principalEmployeeId;
+        if (employeeId != null) {
+            if (!privileged) {
+                throw new BadRequestException("Not allowed to apply leave for other employees");
+            }
+            targetEmployeeId = employeeId;
+        }
+
+        LeaveRequest saved = leaveService.applyLeave(targetEmployeeId, request.getStartDate(), request.getEndDate(), request.getType(), request.getNote());
+        return ResponseEntity.status(HttpStatus.CREATED).body(LeaveResponse.from(saved));
+    }
+
     @PutMapping("/{id}/decide")
     @PreAuthorize("hasRole('MANAGER') or hasRole('HR')")
     public ResponseEntity<LeaveResponse> decide(@PathVariable("id") Long id,
@@ -70,5 +96,18 @@ public class LeaveController {
                 .map(LeaveResponse::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(rows);
+    }
+
+    @DeleteMapping("/{id}/cancel")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> cancel(@AuthenticationPrincipal UserPrincipal principal,
+                                    @PathVariable("id") Long id) {
+        Long employeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
+        if (employeeId == null) {
+            throw new BadRequestException("No employee linked to this user");
+        }
+
+        leaveService.cancelPending(id, employeeId);
+        return ResponseEntity.ok(java.util.Map.of("message", "Cancelled"));
     }
 }

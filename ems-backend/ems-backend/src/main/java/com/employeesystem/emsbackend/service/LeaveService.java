@@ -30,7 +30,8 @@ public class LeaveService {
 
     @Transactional
     @Auditable(action = "CREATE", entity = "LeaveRequest")
-    public LeaveRequest applyLeave(Long employeeId, LocalDate startDate, LocalDate endDate, LeaveType type, String note) {
+    public LeaveRequest applyLeave(Long employeeId, LocalDate startDate, LocalDate endDate, LeaveType type,
+            String note) {
         if (startDate == null || endDate == null || type == null) {
             throw new BadRequestException("startDate, endDate and type are required");
         }
@@ -50,7 +51,8 @@ public class LeaveService {
             LeaveBalance balance = getOrCreateBalance(employee);
             int available = getAvailable(balance, type);
             if (available < days) {
-                throw new BadRequestException("Insufficient leave balance for " + type + ": available=" + available + ", requested=" + days);
+                throw new BadRequestException(
+                        "Insufficient leave balance for " + type + ": available=" + available + ", requested=" + days);
             }
         }
 
@@ -65,7 +67,8 @@ public class LeaveService {
         request.setAppliedAt(LocalDateTime.now());
         LeaveRequest saved = leaveRequestRepository.save(request);
 
-        log.info("EMAIL STUB: Leave applied employeeId={}, leaveId={}, type={}, days={}", employeeId, saved.getId(), type, days);
+        log.info("EMAIL STUB: Leave applied employeeId={}, leaveId={}, type={}, days={}", employeeId, saved.getId(),
+                type, days);
         return saved;
     }
 
@@ -98,7 +101,8 @@ public class LeaveService {
         }
 
         LeaveRequest saved = leaveRequestRepository.save(request);
-        log.info("EMAIL STUB: Leave decision leaveId={}, employeeId={}, status={}", saved.getId(), saved.getEmployee().getId(), status);
+        log.info("EMAIL STUB: Leave decision leaveId={}, employeeId={}, status={}", saved.getId(),
+                saved.getEmployee().getId(), status);
         return saved;
     }
 
@@ -110,6 +114,28 @@ public class LeaveService {
     @Transactional(readOnly = true)
     public List<LeaveRequest> getPendingRequests() {
         return leaveRequestRepository.findByStatusOrderByAppliedAtDesc(LeaveStatus.PENDING);
+    }
+
+    @Transactional
+    @Auditable(action = "DELETE", entity = "LeaveRequest", entityIdArgIndex = 0)
+    public void cancelPending(Long leaveId, Long employeeId) {
+        LeaveRequest request = leaveRequestRepository.findById(leaveId)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest Id " + leaveId + " not found"));
+
+        if (request.getEmployee() == null || request.getEmployee().getId() == null) {
+            throw new BadRequestException("LeaveRequest has no employee");
+        }
+
+        if (!request.getEmployee().getId().equals(employeeId)) {
+            throw new BadRequestException("Not allowed to cancel this leave request");
+        }
+
+        if (request.getStatus() != LeaveStatus.PENDING) {
+            throw new BadRequestException("Only PENDING requests can be cancelled");
+        }
+
+        leaveRequestRepository.delete(request);
+        log.info("Leave cancelled leaveId={}, employeeId={}", leaveId, employeeId);
     }
 
     private LeaveBalance getOrCreateBalance(Employee employee) {

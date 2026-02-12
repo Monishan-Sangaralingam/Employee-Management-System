@@ -13,6 +13,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     Optional<Attendance> findTopByEmployeeIdAndCheckOutIsNullOrderByCheckInDesc(Long employeeId);
 
+    Optional<Attendance> findTopByEmployeeIdAndWorkDateOrderByCheckInDesc(Long employeeId, LocalDate workDate);
+
     List<Attendance> findByEmployeeIdAndWorkDateBetweenOrderByCheckInAsc(Long employeeId, LocalDate start, LocalDate end);
 
     @Query("select coalesce(sum(a.workedMinutes), 0) from Attendance a where a.employee.id = :employeeId and a.workDate between :start and :end")
