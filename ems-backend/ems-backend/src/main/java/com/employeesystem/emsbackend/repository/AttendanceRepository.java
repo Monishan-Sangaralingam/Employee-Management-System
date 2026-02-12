@@ -19,4 +19,12 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     Long sumWorkedMinutesForEmployeeBetween(@Param("employeeId") Long employeeId,
                                            @Param("start") LocalDate start,
                                            @Param("end") LocalDate end);
+
+    @Query("select count(distinct a.employee.id) from Attendance a where a.workDate between :start and :end")
+    long countDistinctEmployeesActiveBetween(@Param("start") LocalDate start,
+                                             @Param("end") LocalDate end);
+
+    @Query("select avg(a.workedMinutes) from Attendance a where a.workDate between :start and :end and a.workedMinutes is not null")
+    Double avgWorkedMinutesBetween(@Param("start") LocalDate start,
+                                   @Param("end") LocalDate end);
 }
