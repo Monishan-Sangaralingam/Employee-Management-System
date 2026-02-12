@@ -15,6 +15,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @CrossOrigin("*")
 @RestController
 @RequestMapping("/api/leave")
@@ -42,5 +45,30 @@ public class LeaveController {
         LeaveStatus status = request.getStatus();
         LeaveRequest decided = leaveService.decide(id, status, request.getNote());
         return ResponseEntity.ok(LeaveResponse.from(decided));
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<LeaveResponse>> myRequests(@AuthenticationPrincipal UserPrincipal principal) {
+        Long employeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
+        if (employeeId == null) {
+            throw new BadRequestException("No employee linked to this user");
+        }
+
+        List<LeaveResponse> rows = leaveService.getMyRequests(employeeId)
+                .stream()
+                .map(LeaveResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(rows);
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('HR')")
+    public ResponseEntity<List<LeaveResponse>> pending() {
+        List<LeaveResponse> rows = leaveService.getPendingRequests()
+                .stream()
+                .map(LeaveResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(rows);
     }
 }

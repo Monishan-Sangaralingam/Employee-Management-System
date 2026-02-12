@@ -5,12 +5,17 @@ import com.employeesystem.emsbackend.service.PayrollService;
 import com.employeesystem.emsbackend.web.payroll.PayrollGenerateRequest;
 import com.employeesystem.emsbackend.web.payroll.PayrollResponse;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 
 @CrossOrigin("*")
 @RestController
@@ -24,6 +29,28 @@ public class PayrollController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<PayrollResponse> generate(@PathVariable Long employeeId,
                                                     @RequestBody PayrollGenerateRequest request) {
+        PayrollRecord record = payrollService.generatePayroll(employeeId, request);
+        return ResponseEntity.ok(PayrollResponse.from(record));
+    }
+
+    @PostMapping("/generate/{employeeId}/{period}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    public ResponseEntity<PayrollResponse> generateForPeriod(@PathVariable Long employeeId,
+                                                             @PathVariable String period,
+                                                             @RequestBody PayrollGenerateRequest request) {
+        YearMonth ym;
+        try {
+            ym = YearMonth.parse(period, DateTimeFormatter.ofPattern("yyyy-MM"));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        request.setYear(ym.getYear());
+        request.setMonth(ym.getMonthValue());
+        if (request.getBaseSalary() == null) {
+            request.setBaseSalary(BigDecimal.ZERO);
+        }
+
         PayrollRecord record = payrollService.generatePayroll(employeeId, request);
         return ResponseEntity.ok(PayrollResponse.from(record));
     }

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -96,6 +97,16 @@ public class LeaveService {
         LeaveRequest saved = leaveRequestRepository.save(request);
         log.info("EMAIL STUB: Leave decision leaveId={}, employeeId={}, status={}", saved.getId(), saved.getEmployee().getId(), status);
         return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public List<LeaveRequest> getMyRequests(Long employeeId) {
+        return leaveRequestRepository.findByEmployeeIdOrderByAppliedAtDesc(employeeId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LeaveRequest> getPendingRequests() {
+        return leaveRequestRepository.findByStatusOrderByAppliedAtDesc(LeaveStatus.PENDING);
     }
 
     private LeaveBalance getOrCreateBalance(Employee employee) {
