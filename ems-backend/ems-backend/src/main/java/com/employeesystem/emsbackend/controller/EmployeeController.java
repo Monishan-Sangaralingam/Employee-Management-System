@@ -5,6 +5,7 @@ import com.employeesystem.emsbackend.service.EmployeeService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Employee> createEmployee(@RequestBody Employee employee) {
         Employee emp = employeeService.addEmployee(employee);
         return new ResponseEntity<>(emp, HttpStatus.CREATED);
@@ -35,6 +37,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Employee> updateEmployee(@PathVariable("id") Long id,
             @RequestBody Employee updateEmployee) {
         Employee emp = employeeService.updateEmployee(id, updateEmployee);
@@ -42,6 +45,7 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<String> deleteById(@PathVariable("id") Long id) {
         employeeService.deleteEmployeeById(id);
         return ResponseEntity.ok("Employee Deleted Successfully");
