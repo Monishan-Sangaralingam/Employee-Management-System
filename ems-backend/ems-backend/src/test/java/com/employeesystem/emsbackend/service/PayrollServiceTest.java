@@ -4,6 +4,7 @@ import com.employeesystem.emsbackend.entity.Employee;
 import com.employeesystem.emsbackend.entity.PayrollRecord;
 import com.employeesystem.emsbackend.exception.BadRequestException;
 import com.employeesystem.emsbackend.repository.EmployeeRepository;
+import com.employeesystem.emsbackend.repository.PayrollRepository;
 import com.employeesystem.emsbackend.repository.PayrollRecordRepository;
 import com.employeesystem.emsbackend.web.payroll.PayrollGenerateRequest;
 import org.junit.jupiter.api.Test;
@@ -27,12 +28,15 @@ class PayrollServiceTest {
     @Mock
     private PayrollRecordRepository payrollRecordRepository;
     @Mock
+    private PayrollRepository payrollRepository;
+    @Mock
     private EmployeeRepository employeeRepository;
 
     @Test
     void generatePayroll_calculatesGrossEpfAndNet_andSavesPdf() {
         PayrollService service = new PayrollService(
                 payrollRecordRepository,
+                payrollRepository,
                 employeeRepository,
                 new BigDecimal("8"),
                 new BigDecimal("12"));
@@ -67,6 +71,7 @@ class PayrollServiceTest {
     void generatePayroll_whenNegativeBaseSalary_throws() {
         PayrollService service = new PayrollService(
                 payrollRecordRepository,
+                payrollRepository,
                 employeeRepository,
                 new BigDecimal("8"),
                 new BigDecimal("12"));

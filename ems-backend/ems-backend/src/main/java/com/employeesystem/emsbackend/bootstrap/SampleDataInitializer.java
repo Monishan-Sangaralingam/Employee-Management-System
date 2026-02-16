@@ -33,22 +33,19 @@ public class SampleDataInitializer implements ApplicationRunner {
                 "Manny",
                 "Manager",
                 "manny.manager@example.com",
-                "Management"
-        );
+                "Management");
 
         Employee employeeEmployee = ensureEmployee(
                 "Eve",
                 "Employee",
                 "eve.employee@example.com",
-                "Engineering"
-        );
+                "Engineering");
 
         Employee hrEmployee = ensureEmployee(
                 "Hannah",
                 "HR",
                 "hannah.hr@example.com",
-                "HR"
-        );
+                "HR");
 
         ensureUser("manager1", "secret", EnumSet.of(Role.MANAGER), managerEmployee);
         ensureUser("employee1", "secret", EnumSet.of(Role.EMPLOYEE), employeeEmployee);

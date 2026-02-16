@@ -1,11 +1,13 @@
 package com.employeesystem.emsbackend.service;
 
 import com.employeesystem.emsbackend.entity.Employee;
+import com.employeesystem.emsbackend.entity.Payroll;
 import com.employeesystem.emsbackend.entity.PayrollRecord;
 import com.employeesystem.emsbackend.audit.Auditable;
 import com.employeesystem.emsbackend.exception.BadRequestException;
 import com.employeesystem.emsbackend.exception.ResourceNotFoundException;
 import com.employeesystem.emsbackend.repository.EmployeeRepository;
+import com.employeesystem.emsbackend.repository.PayrollRepository;
 import com.employeesystem.emsbackend.repository.PayrollRecordRepository;
 import com.employeesystem.emsbackend.web.payroll.PayrollGenerateRequest;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -26,20 +28,94 @@ import java.time.LocalDateTime;
 @Service
 public class PayrollService {
 
+    private static final BigDecimal HUNDRED = new BigDecimal("100.00");
+
     private final PayrollRecordRepository payrollRecordRepository;
+    private final PayrollRepository payrollRepository;
     private final EmployeeRepository employeeRepository;
 
     private final BigDecimal epfEmployeePercent;
     private final BigDecimal epfEmployerPercent;
 
     public PayrollService(PayrollRecordRepository payrollRecordRepository,
+            PayrollRepository payrollRepository,
             EmployeeRepository employeeRepository,
             @Value("${app.payroll.epf-employee-percent}") BigDecimal epfEmployeePercent,
             @Value("${app.payroll.epf-employer-percent}") BigDecimal epfEmployerPercent) {
         this.payrollRecordRepository = payrollRecordRepository;
+        this.payrollRepository = payrollRepository;
         this.employeeRepository = employeeRepository;
         this.epfEmployeePercent = epfEmployeePercent;
         this.epfEmployerPercent = epfEmployerPercent;
+    }
+
+    @Transactional
+    @Auditable(action = "CREATE", entity = "Payroll")
+    public Payroll generatePayroll(
+            Long employeeId,
+            String payrollMonth,
+            BigDecimal basicSalary,
+            BigDecimal allowances,
+            BigDecimal deductions) {
+        if (employeeId == null) {
+            throw new BadRequestException("employeeId is required");
+        }
+        if (payrollMonth == null || payrollMonth.isBlank()) {
+            throw new BadRequestException("payrollMonth is required (format YYYY-MM)");
+        }
+        if (!payrollMonth.matches("\\d{4}-\\d{2}")) {
+            throw new BadRequestException("payrollMonth must be in format YYYY-MM");
+        }
+
+        BigDecimal basic = requireMoney(basicSalary, "basicSalary");
+        BigDecimal safeAllowances = defaultMoney(allowances);
+        BigDecimal safeDeductions = defaultMoney(deductions);
+
+        payrollRepository.findByEmployeeIdAndPayrollMonth(employeeId, payrollMonth)
+                .ifPresent((existing) -> {
+                    throw new BadRequestException(
+                            "Payroll already generated for employeeId=" + employeeId + " and payrollMonth="
+                                    + payrollMonth);
+                });
+
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee Id " + employeeId + " not found"));
+
+        Payroll payroll = new Payroll();
+        payroll.setEmployee(employee);
+        payroll.setPayrollMonth(payrollMonth);
+
+        payroll.setBasicSalary(basic);
+        payroll.setAllowances(safeAllowances);
+        payroll.setDeductions(safeDeductions);
+
+        // Default percentages from the entity spec
+        payroll.setEpfEmployeePercent(new BigDecimal("8.00"));
+        payroll.setEpfEmployerPercent(new BigDecimal("12.00"));
+        payroll.setEtfEmployerPercent(new BigDecimal("3.00"));
+
+        // Gross Salary: basicSalary + allowances
+        BigDecimal grossSalary = basic.add(safeAllowances).setScale(2, RoundingMode.HALF_UP);
+
+        // EPF/ETF amounts are based on basic salary
+        BigDecimal epfEmployeeAmount = percentOf(basic, payroll.getEpfEmployeePercent());
+        BigDecimal epfEmployerAmount = percentOf(basic, payroll.getEpfEmployerPercent());
+        BigDecimal etfEmployerAmount = percentOf(basic, payroll.getEtfEmployerPercent());
+
+        // Net Salary: grossSalary - epfEmployeeAmount - deductions
+        BigDecimal netSalary = grossSalary
+                .subtract(epfEmployeeAmount)
+                .subtract(safeDeductions)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        payroll.setGrossSalary(grossSalary);
+        payroll.setEpfEmployeeAmount(epfEmployeeAmount);
+        payroll.setEpfEmployerAmount(epfEmployerAmount);
+        payroll.setEtfEmployerAmount(etfEmployerAmount);
+        payroll.setNetSalary(netSalary);
+        payroll.setGeneratedAt(LocalDateTime.now());
+
+        return payrollRepository.save(payroll);
     }
 
     @Transactional
@@ -99,7 +175,7 @@ public class PayrollService {
         }
         return amount
                 .multiply(percent)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                .divide(HUNDRED, 2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal requireMoney(BigDecimal value, String field) {
