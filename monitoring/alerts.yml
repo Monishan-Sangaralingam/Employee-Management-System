@@ -1,0 +1,43 @@
+groups:
+  - name: ems-alerts
+    rules:
+
+      # ── Backend down ─────────────────────────
+      - alert: BackendDown
+        expr: up{job="ems-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "EMS Backend is down"
+          description: "Backend has been unreachable for more than 1 minute."
+
+      # ── MySQL down ───────────────────────────
+      - alert: MySQLDown
+        expr: up{job="mysql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MySQL is down"
+          description: "MySQL exporter has been unreachable for more than 1 minute."
+
+      # ── High memory usage ────────────────────
+      - alert: HighJVMMemory
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM heap usage > 90%"
+          description: "Backend JVM heap usage has been above 90% for 5 minutes."
+
+      # ── Slow HTTP responses ──────────────────
+      - alert: SlowHTTPResponses
+        expr: rate(http_server_requests_seconds_sum[5m]) / rate(http_server_requests_seconds_count[5m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Average HTTP response time > 2s"
+          description: "Backend is responding slowly (avg > 2s over 5 minutes)."

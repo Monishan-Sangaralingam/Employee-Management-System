@@ -3,3 +3,6 @@
 
 # Local runtime data
 /data/
+
+# Monitoring data volumes (created by docker compose)
+/monitoring/*_data/
