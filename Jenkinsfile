@@ -23,6 +23,21 @@
  * ========================================================================
  */
 
+def runShell(String unixCmd, String winCmd = null) {
+    if (isUnix()) {
+        sh(script: unixCmd)
+    } else {
+        bat(winCmd ?: unixCmd)
+    }
+}
+
+def runShellOut(String unixCmd, String winCmd = null) {
+    if (isUnix()) {
+        return sh(script: unixCmd, returnStdout: true).trim()
+    }
+    return bat(script: (winCmd ?: unixCmd), returnStdout: true).trim()
+}
+
 pipeline {
     agent {
         label 'Monishan'
@@ -35,7 +50,7 @@ pipeline {
     }
 
     environment {
-        BACKEND_DIR   = 'ems-backend\\ems-backend'
+        BACKEND_DIR   = 'ems-backend/ems-backend'
         FRONTEND_DIR  = 'ems-fullstack'
         BACKEND_REPO  = 'ems-backend'
         FRONTEND_REPO = 'ems-frontend'
@@ -53,8 +68,8 @@ pipeline {
 
         booleanParam(name: 'RUN_TERRAFORM', defaultValue: false,                    description: 'Run Terraform infrastructure provisioning')
         booleanParam(name: 'RUN_ANSIBLE',   defaultValue: false,                    description: 'Run Ansible configuration management')
-        string(name: 'TERRAFORM_DIR',       defaultValue: 'infra\\terraform',       description: 'Path to Terraform files')
-        string(name: 'ANSIBLE_DIR',         defaultValue: 'infra\\ansible',         description: 'Path to Ansible playbooks')
+        string(name: 'TERRAFORM_DIR',       defaultValue: 'infra/terraform',       description: 'Path to Terraform files')
+        string(name: 'ANSIBLE_DIR',         defaultValue: 'infra/ansible',         description: 'Path to Ansible playbooks')
     }
 
     stages {
@@ -64,11 +79,13 @@ pipeline {
          * ============================================================ */
         stage('Preflight') {
             steps {
-                bat 'java -version'
-                bat 'docker version'
-                bat 'docker compose version'
-                bat 'node --version'
-                bat 'npm --version'
+                script {
+                    runShell('java -version')
+                    runShell('docker version')
+                    runShell('docker compose version')
+                    runShell('node --version')
+                    runShell('npm --version')
+                }
             }
         }
 
@@ -79,7 +96,7 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.GIT_COMMIT_SHORT = bat(script: '@git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.GIT_COMMIT_SHORT = runShellOut('git rev-parse --short HEAD', '@git rev-parse --short HEAD')
                     env.IMAGE_TAG        = env.GIT_COMMIT_SHORT
                     env.DOCKER_SERVER    = params.DOCKER_REGISTRY.tokenize('/')[0]
 
@@ -106,14 +123,18 @@ pipeline {
                         stage('Build Backend Image') {
                             steps {
                                 dir(env.BACKEND_DIR) {
-                                    bat '.\\mvnw.cmd -B -DskipTests package'
+                                    script {
+                                        runShell('./mvnw -B -DskipTests package', '.\\mvnw.cmd -B -DskipTests package')
+                                    }
                                 }
                             }
                         }
                         stage('Backend Tests') {
                             steps {
                                 dir(env.BACKEND_DIR) {
-                                    bat '.\\mvnw.cmd -B test'
+                                    script {
+                                        runShell('./mvnw -B test', '.\\mvnw.cmd -B test')
+                                    }
                                 }
                             }
                             post {
@@ -131,15 +152,19 @@ pipeline {
                         stage('Build Frontend Image') {
                             steps {
                                 dir(env.FRONTEND_DIR) {
-                                    bat 'npm ci'
-                                    bat 'npm run build'
+                                    script {
+                                        runShell('npm ci')
+                                        runShell('npm run build')
+                                    }
                                 }
                             }
                         }
                         stage('Frontend Tests') {
                             steps {
                                 dir(env.FRONTEND_DIR) {
-                                    bat 'npm test'
+                                    script {
+                                        runShell('npm test')
+                                    }
                                 }
                             }
                         }
@@ -156,14 +181,21 @@ pipeline {
                 stage('Backend Code Quality') {
                     steps {
                         dir(env.BACKEND_DIR) {
-                            bat '.\\mvnw.cmd -B -DskipTests verify'
+                            script {
+                                runShell('./mvnw -B -DskipTests verify', '.\\mvnw.cmd -B -DskipTests verify')
+                            }
                         }
                     }
                 }
                 stage('Frontend Code Quality') {
                     steps {
                         dir(env.FRONTEND_DIR) {
-                            bat 'npx eslint src/ --max-warnings=50 || echo ESLint not configured - skipping'
+                            script {
+                                runShell(
+                                    'npx eslint src/ --max-warnings=50 || echo "ESLint not configured - skipping"',
+                                    'npx eslint src/ --max-warnings=50 || echo ESLint not configured - skipping'
+                                )
+                            }
                         }
                     }
                 }
@@ -179,7 +211,9 @@ pipeline {
                     "DOCKER_REGISTRY=${params.DOCKER_REGISTRY}",
                     "IMAGE_TAG=${env.IMAGE_TAG}",
                 ]) {
-                    bat 'docker compose build ems-backend ems-frontend'
+                    script {
+                        runShell('docker compose build ems-backend ems-frontend')
+                    }
                 }
             }
         }
@@ -194,7 +228,12 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat 'docker login %DOCKER_SERVER% -u %DOCKER_USER% -p %DOCKER_PASS%'
+                    script {
+                        runShell(
+                            'docker login "$DOCKER_SERVER" -u "$DOCKER_USER" -p "$DOCKER_PASS"',
+                            'docker login %DOCKER_SERVER% -u %DOCKER_USER% -p %DOCKER_PASS%'
+                        )
+                    }
                 }
             }
         }
@@ -206,12 +245,16 @@ pipeline {
             parallel {
                 stage('Push Backend') {
                     steps {
-                        bat "docker push ${env.BACKEND_IMAGE}"
+                        script {
+                            runShell("docker push ${env.BACKEND_IMAGE}")
+                        }
                     }
                 }
                 stage('Push Frontend') {
                     steps {
-                        bat "docker push ${env.FRONTEND_IMAGE}"
+                        script {
+                            runShell("docker push ${env.FRONTEND_IMAGE}")
+                        }
                     }
                 }
             }
@@ -219,10 +262,12 @@ pipeline {
 
         stage('Tag & Push Latest') {
             steps {
-                bat "docker tag ${env.BACKEND_IMAGE}  ${env.BACKEND_IMAGE_LATEST}"
-                bat "docker tag ${env.FRONTEND_IMAGE} ${env.FRONTEND_IMAGE_LATEST}"
-                bat "docker push ${env.BACKEND_IMAGE_LATEST}"
-                bat "docker push ${env.FRONTEND_IMAGE_LATEST}"
+                script {
+                    runShell("docker tag ${env.BACKEND_IMAGE}  ${env.BACKEND_IMAGE_LATEST}")
+                    runShell("docker tag ${env.FRONTEND_IMAGE} ${env.FRONTEND_IMAGE_LATEST}")
+                    runShell("docker push ${env.BACKEND_IMAGE_LATEST}")
+                    runShell("docker push ${env.FRONTEND_IMAGE_LATEST}")
+                }
             }
         }
 
@@ -233,9 +278,11 @@ pipeline {
             when { expression { return params.RUN_TERRAFORM } }
             steps {
                 dir(params.TERRAFORM_DIR) {
-                    bat 'terraform init -input=false'
-                    bat 'terraform plan -out=tfplan'
-                    bat 'terraform apply -auto-approve tfplan'
+                    script {
+                        runShell('terraform init -input=false')
+                        runShell('terraform plan -out=tfplan')
+                        runShell('terraform apply -auto-approve tfplan')
+                    }
                 }
             }
         }
@@ -247,7 +294,9 @@ pipeline {
             when { expression { return params.RUN_ANSIBLE } }
             steps {
                 dir(params.ANSIBLE_DIR) {
-                    bat 'ansible-playbook -i inventory.ini site.yml'
+                    script {
+                        runShell('ansible-playbook -i inventory.ini site.yml')
+                    }
                 }
             }
         }
@@ -262,10 +311,10 @@ pipeline {
                     if (params.DEPLOY_TARGET == 'kubernetes') {
                         echo "Deploying to Kubernetes namespace: ${params.K8S_NAMESPACE}"
                         withCredentials([file(credentialsId: params.KUBECONFIG_CRED_ID, variable: 'KUBECONFIG')]) {
-                            bat "kubectl set image deployment/ems-backend  ems-backend=${env.BACKEND_IMAGE_LATEST}  -n ${params.K8S_NAMESPACE}"
-                            bat "kubectl set image deployment/ems-frontend ems-frontend=${env.FRONTEND_IMAGE_LATEST} -n ${params.K8S_NAMESPACE}"
-                            bat "kubectl rollout status deployment/ems-backend  -n ${params.K8S_NAMESPACE} --timeout=120s"
-                            bat "kubectl rollout status deployment/ems-frontend -n ${params.K8S_NAMESPACE} --timeout=120s"
+                            runShell("kubectl set image deployment/ems-backend  ems-backend=${env.BACKEND_IMAGE_LATEST}  -n ${params.K8S_NAMESPACE}")
+                            runShell("kubectl set image deployment/ems-frontend ems-frontend=${env.FRONTEND_IMAGE_LATEST} -n ${params.K8S_NAMESPACE}")
+                            runShell("kubectl rollout status deployment/ems-backend  -n ${params.K8S_NAMESPACE} --timeout=120s")
+                            runShell("kubectl rollout status deployment/ems-frontend -n ${params.K8S_NAMESPACE} --timeout=120s")
                         }
                     } else {
                         withEnv([
@@ -275,9 +324,9 @@ pipeline {
                             'MYSQL_ROOT_PASSWORD=ems_deploy_root',
                             'JWT_SECRET=production-jwt-secret-change-this-in-env',
                         ]) {
-                            bat 'docker compose pull'
-                            bat 'docker compose up -d'
-                            bat 'docker compose ps'
+                            runShell('docker compose pull')
+                            runShell('docker compose up -d')
+                            runShell('docker compose ps')
                         }
                     }
                 }
@@ -294,12 +343,12 @@ pipeline {
                     echo 'Post-deploy health checks'
                     if (params.DEPLOY_TARGET == 'kubernetes') {
                         withCredentials([file(credentialsId: params.KUBECONFIG_CRED_ID, variable: 'KUBECONFIG')]) {
-                            bat "kubectl get pods -n ${params.K8S_NAMESPACE} -o wide"
-                            bat "kubectl logs deployment/ems-backend -n ${params.K8S_NAMESPACE} --tail=30"
+                            runShell("kubectl get pods -n ${params.K8S_NAMESPACE} -o wide")
+                            runShell("kubectl logs deployment/ems-backend -n ${params.K8S_NAMESPACE} --tail=30")
                         }
                     } else {
-                        bat 'docker compose ps'
-                        bat 'docker compose logs --tail=30 ems-backend ems-frontend'
+                        runShell('docker compose ps')
+                        runShell('docker compose logs --tail=30 ems-backend ems-frontend')
                     }
                 }
             }
@@ -314,7 +363,9 @@ pipeline {
             echo 'Pipeline FAILED - check stage logs above.'
         }
         always {
-            bat 'docker logout 2>nul || echo Logged out'
+            script {
+                runShell('docker logout >/dev/null 2>&1 || true', 'docker logout 2>nul || echo Logged out')
+            }
             cleanWs()
         }
     }
