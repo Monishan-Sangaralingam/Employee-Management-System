@@ -210,6 +210,10 @@ pipeline {
                 withEnv([
                     "DOCKER_REGISTRY=${params.DOCKER_REGISTRY}",
                     "IMAGE_TAG=${env.IMAGE_TAG}",
+                    // Required by docker-compose.yml variable interpolation (even for build-only commands)
+                    'MYSQL_PASSWORD=ems_ci_pass',
+                    'MYSQL_ROOT_PASSWORD=ems_ci_root',
+                    'JWT_SECRET=ems_ci_jwt_secret',
                 ]) {
                     script {
                         runShell('docker compose build ems-backend ems-frontend')
