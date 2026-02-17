@@ -64,21 +64,22 @@ public class AttendanceController {
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AttendanceResponse> todayForEmployee(@AuthenticationPrincipal UserPrincipal principal,
-                                                              @PathVariable Long employeeId,
-                                                              @RequestParam(required = false) String date) {
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) String date) {
         Long principalEmployeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
         if (principalEmployeeId == null) {
             throw new BadRequestException("No employee linked to this user");
         }
 
-        boolean adminOrHr = principal.getAuthorities().stream().anyMatch(a ->
-                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()));
+        boolean adminOrHr = principal.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()));
 
         if (!adminOrHr && !principalEmployeeId.equals(employeeId)) {
             throw new BadRequestException("Not allowed to view other employees");
         }
 
-        // Only 'today' is supported for now; other values return today's record as well.
+        // Only 'today' is supported for now; other values return today's record as
+        // well.
         var row = attendanceService.getTodayAttendance(employeeId);
         return ResponseEntity.ok(row == null ? null : AttendanceResponse.from(row));
     }
@@ -87,15 +88,15 @@ public class AttendanceController {
     @GetMapping("/monthly/{yyyyMM}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AttendanceResponse>> monthlyAlias(@AuthenticationPrincipal UserPrincipal principal,
-                                                                @PathVariable String yyyyMM,
-                                                                @RequestParam(required = false) Long employeeId) {
+            @PathVariable String yyyyMM,
+            @RequestParam(required = false) Long employeeId) {
         Long principalEmployeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
         if (principalEmployeeId == null) {
             throw new BadRequestException("No employee linked to this user");
         }
 
-        boolean adminOrHr = principal.getAuthorities().stream().anyMatch(a ->
-                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()));
+        boolean adminOrHr = principal.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()));
 
         Long targetEmployeeId = principalEmployeeId;
         if (employeeId != null) {
@@ -112,7 +113,8 @@ public class AttendanceController {
             throw new BadRequestException("Invalid month format. Expected yyyy-MM");
         }
 
-        List<AttendanceResponse> rows = attendanceService.getMonthlyAttendance(targetEmployeeId, ym.getYear(), ym.getMonthValue())
+        List<AttendanceResponse> rows = attendanceService
+                .getMonthlyAttendance(targetEmployeeId, ym.getYear(), ym.getMonthValue())
                 .stream()
                 .map(AttendanceResponse::from)
                 .collect(Collectors.toList());
@@ -122,8 +124,8 @@ public class AttendanceController {
     @GetMapping("/me/monthly")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AttendanceResponse>> myMonthly(@AuthenticationPrincipal UserPrincipal principal,
-                                                             @RequestParam int year,
-                                                             @RequestParam int month) {
+            @RequestParam int year,
+            @RequestParam int month) {
         Long employeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
         if (employeeId == null) {
             throw new BadRequestException("No employee linked to this user");
@@ -138,8 +140,8 @@ public class AttendanceController {
     @GetMapping("/report/{employeeId}/monthly")
     @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<List<AttendanceResponse>> employeeMonthly(@PathVariable Long employeeId,
-                                                                   @RequestParam int year,
-                                                                   @RequestParam int month) {
+            @RequestParam int year,
+            @RequestParam int month) {
         List<AttendanceResponse> rows = attendanceService.getMonthlyAttendance(employeeId, year, month)
                 .stream()
                 .map(AttendanceResponse::from)
@@ -150,8 +152,8 @@ public class AttendanceController {
     @GetMapping("/report/{employeeId}/totals")
     @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<MonthlyTotalsResponse> employeeMonthlyTotals(@PathVariable Long employeeId,
-                                                                       @RequestParam int year,
-                                                                       @RequestParam int month) {
+            @RequestParam int year,
+            @RequestParam int month) {
         Long total = attendanceService.getMonthlyTotalWorkedMinutes(employeeId, year, month);
         return ResponseEntity.ok(new MonthlyTotalsResponse(employeeId, year, month, total));
     }

@@ -15,18 +15,19 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     Optional<Attendance> findTopByEmployeeIdAndWorkDateOrderByCheckInDesc(Long employeeId, LocalDate workDate);
 
-    List<Attendance> findByEmployeeIdAndWorkDateBetweenOrderByCheckInAsc(Long employeeId, LocalDate start, LocalDate end);
+    List<Attendance> findByEmployeeIdAndWorkDateBetweenOrderByCheckInAsc(Long employeeId, LocalDate start,
+            LocalDate end);
 
     @Query("select coalesce(sum(a.workedMinutes), 0) from Attendance a where a.employee.id = :employeeId and a.workDate between :start and :end")
     Long sumWorkedMinutesForEmployeeBetween(@Param("employeeId") Long employeeId,
-                                           @Param("start") LocalDate start,
-                                           @Param("end") LocalDate end);
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end);
 
     @Query("select count(distinct a.employee.id) from Attendance a where a.workDate between :start and :end")
     long countDistinctEmployeesActiveBetween(@Param("start") LocalDate start,
-                                             @Param("end") LocalDate end);
+            @Param("end") LocalDate end);
 
     @Query("select avg(a.workedMinutes) from Attendance a where a.workDate between :start and :end and a.workedMinutes is not null")
     Double avgWorkedMinutesBetween(@Param("start") LocalDate start,
-                                   @Param("end") LocalDate end);
+            @Param("end") LocalDate end);
 }

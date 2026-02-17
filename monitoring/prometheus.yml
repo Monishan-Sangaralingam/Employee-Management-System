@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+
+  # ── Spring Boot Actuator metrics ───────────
+  - job_name: ems-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["ems-backend:8090"]
+        labels:
+          service: backend
+
+  # ── MySQL exporter ─────────────────────────
+  - job_name: mysql
+    static_configs:
+      - targets: ["mysql-exporter:9104"]
+        labels:
+          service: mysql
+
+  # ── Prometheus self-monitoring ─────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

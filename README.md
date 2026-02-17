@@ -162,6 +162,71 @@ Backend reads configuration from environment variables (see `application.propert
 Uploads are persisted on the host:
 - `./data/uploads` is mounted into the backend at `/data/uploads`.
 
+## Production Deployment
+
+### CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/docker-images.yml`) runs automatically on pushes to `main`:
+
+```
+GitHub Push → Build & Test (parallel) → SonarCloud → Docker Build & Push → Smoke Test → Deploy
+```
+
+### Server Prerequisites
+
+- Linux server (Ubuntu 22.04+ recommended) with Docker and Docker Compose v2
+- SSH access configured for the deploying user
+- Firewall: open ports 80 (HTTP), 443 (HTTPS), 8090 (backend API)
+
+### GitHub Repository Setup
+
+1. **Secrets** (Settings → Secrets and variables → Actions):
+   - `DEPLOY_SSH_KEY` — private SSH key for the deploy user
+
+2. **Variables** (Settings → Secrets and variables → Actions → Variables):
+   - `DEPLOY_HOST` — server IP or hostname
+   - `DEPLOY_USER` — SSH username (default: `deploy`)
+   - `DEPLOY_PATH` — project path on server (default: `/opt/ems`)
+
+3. **Environment**: create a `production` environment (Settings → Environments) for deploy approval gates.
+
+4. **Optional**: add `SONAR_TOKEN` secret for SonarCloud static analysis.
+
+### Manual Deployment
+
+```bash
+# On the production server:
+cd /opt/ems
+cp .env.example .env      # edit with production values
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh        # pulls images, starts services, checks health
+```
+
+### Docker Compose (Production)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+This applies production overrides: restart policies, resource limits, health checks, and log rotation.
+
+### Monitoring (Optional)
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  -f docker-compose.monitoring.yml \
+  up -d
+```
+
+| Service | URL | Default Credentials |
+|---|---|---|
+| Prometheus | `http://<host>:9090` | — |
+| Grafana | `http://<host>:3000` | admin / admin |
+
+Alerts are configured for: backend down, MySQL down, high JVM memory, slow HTTP responses.
+
 ## Troubleshooting (Minimal)
 
 - Docker not running: start Docker Desktop (Windows) and retry `docker compose up -d --build`.

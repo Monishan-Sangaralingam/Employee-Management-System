@@ -29,28 +29,30 @@ public class LeaveController {
     @PostMapping("/me/apply")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<LeaveResponse> apply(@AuthenticationPrincipal UserPrincipal principal,
-                                               @RequestBody LeaveApplyRequest request) {
+            @RequestBody LeaveApplyRequest request) {
         Long employeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
         if (employeeId == null) {
             throw new BadRequestException("No employee linked to this user");
         }
-        LeaveRequest saved = leaveService.applyLeave(employeeId, request.getStartDate(), request.getEndDate(), request.getType(), request.getNote());
+        LeaveRequest saved = leaveService.applyLeave(employeeId, request.getStartDate(), request.getEndDate(),
+                request.getType(), request.getNote());
         return ResponseEntity.status(HttpStatus.CREATED).body(LeaveResponse.from(saved));
     }
 
-    // Alias: POST /api/leave/apply (optionally apply for a specific employeeId if caller is HR/MANAGER/ADMIN)
+    // Alias: POST /api/leave/apply (optionally apply for a specific employeeId if
+    // caller is HR/MANAGER/ADMIN)
     @PostMapping("/apply")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<LeaveResponse> applyAlias(@AuthenticationPrincipal UserPrincipal principal,
-                                                    @RequestParam(required = false) Long employeeId,
-                                                    @RequestBody LeaveApplyRequest request) {
+            @RequestParam(required = false) Long employeeId,
+            @RequestBody LeaveApplyRequest request) {
         Long principalEmployeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
         if (principalEmployeeId == null) {
             throw new BadRequestException("No employee linked to this user");
         }
 
-        boolean privileged = principal.getAuthorities().stream().anyMatch(a ->
-                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_HR".equals(a.getAuthority()) || "ROLE_MANAGER".equals(a.getAuthority()));
+        boolean privileged = principal.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())
+                || "ROLE_HR".equals(a.getAuthority()) || "ROLE_MANAGER".equals(a.getAuthority()));
 
         Long targetEmployeeId = principalEmployeeId;
         if (employeeId != null) {
@@ -60,14 +62,15 @@ public class LeaveController {
             targetEmployeeId = employeeId;
         }
 
-        LeaveRequest saved = leaveService.applyLeave(targetEmployeeId, request.getStartDate(), request.getEndDate(), request.getType(), request.getNote());
+        LeaveRequest saved = leaveService.applyLeave(targetEmployeeId, request.getStartDate(), request.getEndDate(),
+                request.getType(), request.getNote());
         return ResponseEntity.status(HttpStatus.CREATED).body(LeaveResponse.from(saved));
     }
 
     @PutMapping("/{id}/decide")
     @PreAuthorize("hasRole('MANAGER') or hasRole('HR')")
     public ResponseEntity<LeaveResponse> decide(@PathVariable("id") Long id,
-                                                @RequestBody DecideLeaveRequest request) {
+            @RequestBody DecideLeaveRequest request) {
         LeaveStatus status = request.getStatus();
         LeaveRequest decided = leaveService.decide(id, status, request.getNote());
         return ResponseEntity.ok(LeaveResponse.from(decided));
@@ -101,7 +104,7 @@ public class LeaveController {
     @DeleteMapping("/{id}/cancel")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> cancel(@AuthenticationPrincipal UserPrincipal principal,
-                                    @PathVariable("id") Long id) {
+            @PathVariable("id") Long id) {
         Long employeeId = principal.getEmployee() != null ? principal.getEmployee().getId() : null;
         if (employeeId == null) {
             throw new BadRequestException("No employee linked to this user");

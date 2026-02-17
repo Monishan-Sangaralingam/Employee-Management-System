@@ -21,6 +21,7 @@ services:
     container_name: ems-redis
 
   ems-backend:
+    image: ${DOCKER_REGISTRY:-docker.io/monishan8130}/ems-backend:${IMAGE_TAG:-latest}
     build:
       context: ./ems-backend/ems-backend
       dockerfile: Dockerfile
@@ -49,6 +50,7 @@ services:
       - "8090:8090"
 
   ems-frontend:
+    image: ${DOCKER_REGISTRY:-docker.io/monishan8130}/ems-frontend:${IMAGE_TAG:-latest}
     build:
       context: ./ems-fullstack
       dockerfile: Dockerfile
