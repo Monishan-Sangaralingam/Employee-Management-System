@@ -80,11 +80,26 @@ pipeline {
         stage('Preflight') {
             steps {
                 script {
+                    // Essential build tools — fail fast if missing
                     runShell('java -version')
-                    runShell('docker version')
-                    runShell('docker compose version')
                     runShell('node --version')
                     runShell('npm --version')
+
+                    // Docker — optional for build/test stages; only required for image build/push
+                    env.DOCKER_AVAILABLE = 'false'
+                    try {
+                        if (isUnix()) {
+                            sh(script: 'docker version', returnStatus: false)
+                        } else {
+                            bat(script: 'docker version', returnStatus: false)
+                        }
+                        runShell('docker compose version')
+                        env.DOCKER_AVAILABLE = 'true'
+                        echo 'Docker is available.'
+                    } catch (err) {
+                        echo "WARNING: Docker is not available (${err.message}). Docker-dependent stages will be skipped."
+                        unstable('Docker daemon is not running — Docker stages will be skipped.')
+                    }
                 }
             }
         }
@@ -206,6 +221,7 @@ pipeline {
          *  STAGE 5 — Docker Build
          * ============================================================ */
         stage('Docker Build') {
+            when { expression { return env.DOCKER_AVAILABLE == 'true' } }
             steps {
                 withEnv([
                     "DOCKER_REGISTRY=${params.DOCKER_REGISTRY}",
@@ -226,6 +242,7 @@ pipeline {
          *  STAGE 6 — Login to Docker / Container Registry
          * ============================================================ */
         stage('Login to Registry') {
+            when { expression { return env.DOCKER_AVAILABLE == 'true' } }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: params.DOCKER_CRED_ID,
@@ -246,6 +263,7 @@ pipeline {
          *  STAGE 7 — Push Docker Images
          * ============================================================ */
         stage('Push Docker Images') {
+            when { expression { return env.DOCKER_AVAILABLE == 'true' } }
             parallel {
                 stage('Push Backend') {
                     steps {
@@ -265,6 +283,7 @@ pipeline {
         }
 
         stage('Tag & Push Latest') {
+            when { expression { return env.DOCKER_AVAILABLE == 'true' } }
             steps {
                 script {
                     runShell("docker tag ${env.BACKEND_IMAGE}  ${env.BACKEND_IMAGE_LATEST}")
