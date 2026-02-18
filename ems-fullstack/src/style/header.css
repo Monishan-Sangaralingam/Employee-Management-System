@@ -1,15 +1,95 @@
-.col {
-    background-color: #7431F9;
+/* ── Header / Navbar ───────────────────────────────────────────────────── */
 
+.ems-navbar {
+  background: linear-gradient(135deg, #312E81 0%, var(--ems-primary) 50%, var(--ems-primary-light) 100%);
+  box-shadow: 0 2px 12px rgba(49,46,129,.3);
+  padding: 0.65rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 1050;
 }
 
-.col a {
-    color: white;
+.ems-navbar .navbar-brand {
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.col a:hover {
-    color: white;
+.ems-navbar .navbar-brand::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--ems-accent-light);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(20,184,166,.6);
 }
-.navi{
-    cursor: pointer;
+
+.ems-navbar .nav-link {
+  color: rgba(255,255,255,.8) !important;
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.85rem !important;
+  border-radius: var(--ems-radius);
+  cursor: pointer;
+  transition: color 150ms, background 150ms;
+}
+.ems-navbar .nav-link:hover {
+  color: #fff !important;
+  background: rgba(255,255,255,.12);
+}
+.ems-navbar .nav-link.active {
+  color: #fff !important;
+  background: rgba(255,255,255,.18);
+  font-weight: 600;
+}
+
+/* Pending leave badge on nav */
+.ems-navbar .badge {
+  background: var(--ems-accent-light);
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 0.25em 0.55em;
+  margin-left: 4px;
+}
+
+/* Logout button in header */
+.ems-navbar .btn-ems-logout {
+  color: rgba(255,255,255,.85);
+  border: 1px solid rgba(255,255,255,.35);
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.35rem 1rem;
+  border-radius: var(--ems-radius);
+  transition: all 150ms;
+}
+.ems-navbar .btn-ems-logout:hover {
+  background: rgba(255,255,255,.15);
+  border-color: rgba(255,255,255,.6);
+  color: #fff;
+}
+
+/* Toggler */
+.ems-navbar .navbar-toggler {
+  border-color: rgba(255,255,255,.3);
+  padding: 0.35rem 0.6rem;
+}
+.ems-navbar .navbar-toggler-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* Mobile collapse */
+@media (max-width: 991.98px) {
+  .ems-navbar .navbar-collapse {
+    padding-top: 0.75rem;
+    padding-bottom: 0.5rem;
+  }
+  .ems-navbar .nav-link {
+    padding: 0.5rem 0.75rem !important;
+  }
 }

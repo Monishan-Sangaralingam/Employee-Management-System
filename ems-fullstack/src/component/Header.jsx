@@ -60,9 +60,9 @@ function Header() {
 
     return (
         <>
-            <nav className='navbar navbar-expand-lg bg-body-primary col'>
+            <nav className='ems-navbar navbar navbar-expand-lg'>
                 <div className="container">
-                    <Link className="navbar-brand navi" to={isAuthed ? '/dashboard' : '/login'}>
+                    <Link className="navbar-brand" to={isAuthed ? '/dashboard' : '/login'}>
                         Employee Management System
                     </Link>
 
@@ -80,25 +80,25 @@ function Header() {
                             </button>
 
                             <div className={`collapse navbar-collapse ${navOpen ? 'show' : ''}`} id="emsNavbar">
-                                <div className="navbar-nav ms-auto d-flex gap-3 align-items-lg-center">
-                                    <NavLink className="navi nav-link" to="/dashboard" onClick={onNavItemClick}>
+                                <div className="navbar-nav ms-auto d-flex gap-1 align-items-lg-center">
+                                    <NavLink className="nav-link" to="/dashboard" onClick={onNavItemClick}>
                                         Dashboard
                                     </NavLink>
                                     {showEmployees ? (
-                                        <NavLink className="navi nav-link" to="/employees" onClick={onNavItemClick}>
+                                        <NavLink className="nav-link" to="/employees" onClick={onNavItemClick}>
                                             Employees
                                         </NavLink>
                                     ) : null}
 
-                                    <NavLink className="navi nav-link" to="/attendance" onClick={onNavItemClick}>
+                                    <NavLink className="nav-link" to="/attendance" onClick={onNavItemClick}>
                                         Attendance
                                     </NavLink>
 
-                                    <NavLink className="navi nav-link" to="/leave" onClick={onNavItemClick}>
-                                        <span className="d-inline-flex align-items-center gap-2">
+                                    <NavLink className="nav-link" to="/leave" onClick={onNavItemClick}>
+                                        <span className="d-inline-flex align-items-center gap-1">
                                             <span>Leave</span>
                                             {showPendingCount && pendingLeaveCount != null && pendingLeaveCount > 0 ? (
-                                                <span className="badge text-bg-light" aria-label={`${pendingLeaveCount} pending leave requests`}>
+                                                <span className="badge" aria-label={`${pendingLeaveCount} pending leave requests`}>
                                                     {pendingLeaveCount}
                                                 </span>
                                             ) : null}
@@ -106,12 +106,12 @@ function Header() {
                                     </NavLink>
 
                                     {showPayroll ? (
-                                        <NavLink className="navi nav-link" to="/payroll" onClick={onNavItemClick}>
+                                        <NavLink className="nav-link" to="/payroll" onClick={onNavItemClick}>
                                             Payroll
                                         </NavLink>
                                     ) : null}
 
-                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => { onNavItemClick(); onLogout(); }}>
+                                    <button className="btn btn-ems-logout btn-sm ms-lg-2" onClick={() => { onNavItemClick(); onLogout(); }}>
                                         Logout
                                     </button>
                                 </div>

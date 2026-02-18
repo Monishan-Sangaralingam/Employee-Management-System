@@ -1,7 +1,28 @@
+/* ── Attendance Component ──────────────────────────────────────────────── */
 .attendance-status dt {
     font-weight: 600;
+    color: var(--ems-text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .attendance-status dd {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+    color: var(--ems-text);
+}
+
+/* Check-in/out card */
+.ems-checkin-card {
+    border-top: 3px solid var(--ems-primary);
+}
+
+/* Monthly summary highlight */
+.ems-monthly-summary {
+    background: var(--ems-primary-lighter);
+    border: 1px solid rgba(99,102,241,.15);
+}
+.ems-monthly-summary .ems-stat-value {
+    color: var(--ems-primary);
 }

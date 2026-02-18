@@ -24,14 +24,6 @@ function EmployeeComponent() {
     }), [])
 
 
-    function pageTitle() {
-        if (id) {
-            return <h4 className='title'>Update Employees</h4>
-        } else {
-            return <h4 className='title'>Add Employees</h4>
-        }
-    }
-
     useEffect(() => {
         if (id) {
             setIsLoading(true)
@@ -103,77 +95,73 @@ function EmployeeComponent() {
 
     return (
         <>
-            <div className='st-ba'>
-                <div className='container d-flex justify-content-center align-items-center '>
-                    <div className="text-center card card-top" >
-                        <div className='card-head'>
-                            {
-                                pageTitle()
-                            }
-                        </div>
-                        <div className="card-body">
-                            <form onSubmit={saveEmployee} noValidate aria-label={id ? 'Update employee form' : 'Add employee form'}>
-                                <div className='form-group mb-3'>
-                                    <label className='form-label' htmlFor={ids.firstName}>First name</label>
-                                    <input
-                                        type="text"
-                                        placeholder='Enter First Name'
-                                        value={firstName}
-                                        className={`form-control ${errors.firstName ? 'is-invalid' : ''}`}
-                                        onChange={(e) => setFirstName(e.target.value)}
-                                        id={ids.firstName}
-                                        aria-label='First name'
-                                        aria-required='true'
-                                        aria-invalid={errors.firstName ? 'true' : 'false'}
-                                        disabled={isLoading || isSaving}
-                                        required
-                                    />
-                                    {errors.firstName ? <div className="invalid-feedback">{errors.firstName}</div> : null}
-                                </div>
-                                <div className='form-group mb-3'>
-                                    <label className='form-label' htmlFor={ids.lastName}>Last name</label>
-                                    <input
-                                        type="text"
-                                        placeholder='Enter LastName'
-                                        value={lastName}
-                                        className={`form-control ${errors.lastName ? 'is-invalid' : ''}`}
-                                        onChange={(e) => setLastName(e.target.value)}
-                                        id={ids.lastName}
-                                        aria-label='Last name'
-                                        aria-required='true'
-                                        aria-invalid={errors.lastName ? 'true' : 'false'}
-                                        disabled={isLoading || isSaving}
-                                        required
-                                    />
-                                    {errors.lastName ? <div className="invalid-feedback">{errors.lastName}</div> : null}
-                                </div>
-                                <div className='form-group mb-3'>
-                                    <label className='form-label' htmlFor={ids.email}>Email</label>
-                                    <input
-                                        type="email"
-                                        placeholder='Enter Email'
-                                        value={email}
-                                        className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        id={ids.email}
-                                        aria-label='Email'
-                                        aria-required='true'
-                                        aria-invalid={errors.email ? 'true' : 'false'}
-                                        disabled={isLoading || isSaving}
-                                        required
-                                    />
-                                    {errors.email ? <div className="invalid-feedback">{errors.email}</div> : null}
-                                </div>
-                                <button className='btn btn-success' type='submit' disabled={isLoading || isSaving}>
-                                    {isSaving ? (
-                                        <span className="d-inline-flex align-items-center gap-2">
-                                            <span className="spinner-border spinner-border-sm" aria-hidden="true" />
-                                            Saving…
-                                        </span>
-                                    ) : 'Save'}
-                                </button>
-                            </form>
-                        </div>
+            <div className='ems-form-page'>
+                <div className='card ems-form-card'>
+                    <div className='ems-form-header'>
+                        {id ? <h4>Update Employee</h4> : <h4>Add Employee</h4>}
+                    </div>
+                    <div className="card-body">
+                        <form onSubmit={saveEmployee} noValidate aria-label={id ? 'Update employee form' : 'Add employee form'}>
+                            <div className='form-group mb-3'>
+                                <label className='form-label' htmlFor={ids.firstName}>First name</label>
+                                <input
+                                    type="text"
+                                    placeholder='Enter first name'
+                                    value={firstName}
+                                    className={`form-control ${errors.firstName ? 'is-invalid' : ''}`}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    id={ids.firstName}
+                                    aria-label='First name'
+                                    aria-required='true'
+                                    aria-invalid={errors.firstName ? 'true' : 'false'}
+                                    disabled={isLoading || isSaving}
+                                    required
+                                />
+                                {errors.firstName ? <div className="invalid-feedback">{errors.firstName}</div> : null}
+                            </div>
+                            <div className='form-group mb-3'>
+                                <label className='form-label' htmlFor={ids.lastName}>Last name</label>
+                                <input
+                                    type="text"
+                                    placeholder='Enter last name'
+                                    value={lastName}
+                                    className={`form-control ${errors.lastName ? 'is-invalid' : ''}`}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    id={ids.lastName}
+                                    aria-label='Last name'
+                                    aria-required='true'
+                                    aria-invalid={errors.lastName ? 'true' : 'false'}
+                                    disabled={isLoading || isSaving}
+                                    required
+                                />
+                                {errors.lastName ? <div className="invalid-feedback">{errors.lastName}</div> : null}
+                            </div>
+                            <div className='form-group mb-3'>
+                                <label className='form-label' htmlFor={ids.email}>Email</label>
+                                <input
+                                    type="email"
+                                    placeholder='Enter email address'
+                                    value={email}
+                                    className={`form-control ${errors.email ? 'is-invalid' : ''}`}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    id={ids.email}
+                                    aria-label='Email'
+                                    aria-required='true'
+                                    aria-invalid={errors.email ? 'true' : 'false'}
+                                    disabled={isLoading || isSaving}
+                                    required
+                                />
+                                {errors.email ? <div className="invalid-feedback">{errors.email}</div> : null}
+                            </div>
+                            <button className='btn btn-primary w-100' type='submit' disabled={isLoading || isSaving} style={{ padding: '0.6rem', fontWeight: 600 }}>
+                                {isSaving ? (
+                                    <span className="d-inline-flex align-items-center gap-2">
+                                        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                                        Saving…
+                                    </span>
+                                ) : id ? 'Update Employee' : 'Add Employee'}
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

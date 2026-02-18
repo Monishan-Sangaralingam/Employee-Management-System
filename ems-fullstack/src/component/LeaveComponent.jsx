@@ -102,10 +102,10 @@ export default function LeaveComponent() {
     }
 
     return (
-        <div className="container" style={{ marginTop: 24 }}>
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                <h3 className="mb-0">Leave</h3>
-                {employeeId ? <div className="text-muted">Employee ID: {employeeId}</div> : null}
+        <div className="container ems-page-container">
+            <div className="ems-page-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <h3>Leave</h3>
+                {employeeId ? <div className="text-muted" style={{ fontSize: '0.9rem' }}>Employee ID: <strong>{employeeId}</strong></div> : null}
             </div>
 
             <ul className="nav nav-tabs" role="tablist" aria-label="Leave sections">
@@ -149,7 +149,7 @@ export default function LeaveComponent() {
                                     </div>
                                 ) : (
                                     <div className="table-responsive">
-                                        <table className="table table-sm align-middle" aria-label="My leave requests">
+                                        <table className="ems-table" aria-label="My leave requests">
                                             <thead>
                                                 <tr>
                                                     <th scope="col">Type</th>
@@ -205,11 +205,11 @@ export default function LeaveComponent() {
 
                         <button
                             type="button"
-                            className="btn btn-primary position-fixed bottom-0 end-0 m-4"
+                            className="btn btn-primary ems-fab"
                             onClick={() => setShowModal(true)}
                             aria-label="Apply leave"
                         >
-                            Apply Leave
+                            + Apply Leave
                         </button>
                     </div>
                 ) : null}
@@ -227,7 +227,7 @@ export default function LeaveComponent() {
                                     </div>
                                 ) : (
                                     <div className="table-responsive">
-                                        <table className="table table-sm align-middle" aria-label="Pending leave requests">
+                                        <table className="ems-table" aria-label="Pending leave requests">
                                             <thead>
                                                 <tr>
                                                     <th scope="col">Employee</th>

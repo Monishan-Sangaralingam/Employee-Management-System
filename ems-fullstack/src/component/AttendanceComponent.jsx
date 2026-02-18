@@ -161,17 +161,17 @@ function AttendanceComponent() {
     }
 
     return (
-        <div className="container" style={{ marginTop: 24 }}>
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                <h3 className="mb-0">Attendance</h3>
+        <div className="container ems-page-container">
+            <div className="ems-page-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <h3>Attendance</h3>
                 {employeeId ? (
-                    <div className="text-muted" aria-label="Employee id">Employee ID: {employeeId}</div>
+                    <div className="text-muted" style={{ fontSize: '0.9rem' }}>Employee ID: <strong>{employeeId}</strong></div>
                 ) : null}
             </div>
 
             <div className="row g-3">
                 <div className="col-12 col-lg-5">
-                    <div className="card">
+                    <div className="card ems-checkin-card">
                         <div className="card-body">
                             <h5 className="card-title">Check-in / Check-out</h5>
 
@@ -238,7 +238,7 @@ function AttendanceComponent() {
                 <div className="col-12 col-lg-7">
                     <div className="card mb-3">
                         <div className="card-body">
-                            <h5 className="card-title">Recent records (last 7 days)</h5>
+                            <h5 className="card-title">Recent Records (Last 7 Days)</h5>
 
                             {loading ? (
                                 <div className="d-flex align-items-center gap-2 text-muted">
@@ -247,7 +247,7 @@ function AttendanceComponent() {
                                 </div>
                             ) : (
                                 <div className="table-responsive">
-                                    <table className="table table-sm align-middle mb-0" aria-label="Recent attendance records">
+                                    <table className="ems-table" aria-label="Recent attendance records">
                                         <caption className="visually-hidden">Recent attendance records</caption>
                                         <thead>
                                             <tr>
@@ -260,7 +260,7 @@ function AttendanceComponent() {
                                         <tbody>
                                             {recentRows.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={4} className="text-muted">
+                                                    <td colSpan={4} className="text-muted text-center" style={{ padding: '1.5rem' }}>
                                                         No records yet.
                                                     </td>
                                                 </tr>
@@ -273,7 +273,7 @@ function AttendanceComponent() {
                                                         <td>{toLocalDate(r.workDate) || '—'}</td>
                                                         <td>{toLocalTime(r.checkIn) || '—'}</td>
                                                         <td>{toLocalTime(r.checkOut) || '—'}</td>
-                                                        <td className="text-end">{formatMinutesToHHMM(Number(r.workedMinutes || 0))}</td>
+                                                        <td className="text-end" style={{ fontWeight: 600 }}>{formatMinutesToHHMM(Number(r.workedMinutes || 0))}</td>
                                                     </tr>
                                                 ))
                                             )}
@@ -284,12 +284,12 @@ function AttendanceComponent() {
                         </div>
                     </div>
 
-                    <div className="card">
+                    <div className="card ems-monthly-summary">
                         <div className="card-body">
-                            <h5 className="card-title">Monthly summary</h5>
+                            <h5 className="card-title">Monthly Summary</h5>
                             <div className="d-flex align-items-baseline justify-content-between flex-wrap gap-2">
                                 <div className="text-muted">Total worked hours ({yyyyMM})</div>
-                                <div className="h5 mb-0" aria-label="Total worked hours this month">
+                                <div className="ems-stat-value" aria-label="Total worked hours this month">
                                     {formatMinutesToHHMM(monthlyTotalMinutes)}
                                 </div>
                             </div>
