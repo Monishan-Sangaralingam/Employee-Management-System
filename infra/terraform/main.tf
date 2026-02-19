@@ -20,12 +20,11 @@ terraform {
     }
   }
 
-  # Uncomment to use remote state:
-  # backend "s3" {
-  #   bucket = "ems-terraform-state"
-  #   key    = "prod/terraform.tfstate"
-  #   region = "ap-southeast-1"
-  # }
+  backend "s3" {
+    bucket = "ems-terraform-state-monishan"
+    key    = "prod/terraform.tfstate"
+    region = "ap-southeast-1"
+  }
 }
 
 provider "aws" {

@@ -321,19 +321,16 @@ pipeline {
         stage('Terraform Provisioning') {
             when { expression { return params.RUN_TERRAFORM && env.TERRAFORM_AVAILABLE == 'true' } }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: params.AWS_CRED_ID,
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
-                    withEnv([
-                        "TF_VAR_aws_access_key=${AWS_ACCESS_KEY_ID}",
-                        "TF_VAR_aws_secret_key=${AWS_SECRET_ACCESS_KEY}"
-                    ]) {
-                        dir(params.TERRAFORM_DIR) {
-                            script {
-                                echo 'Initializing Terraform...'
+                script {
+                    try {
+                        // Try AWS Credentials binding first (Amazon Web Services Credentials plugin)
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                            credentialsId: params.AWS_CRED_ID,
+                            accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                            secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                        ]]) {
+                            dir(params.TERRAFORM_DIR) {
+                                echo 'Initializing Terraform (S3 backend)...'
                                 runShell('terraform init -input=false -upgrade')
 
                                 echo 'Planning infrastructure changes...'
@@ -343,6 +340,37 @@ pipeline {
                                 runShell('terraform apply -auto-approve tfplan')
                                 echo 'Terraform provisioning complete.'
                             }
+                        }
+                    } catch (err) {
+                        def msg = err.getMessage() ?: ''
+                        if (msg.contains('Could not find credentials') || msg.contains('credentials')) {
+                            // Fall back to username/password credential type
+                            try {
+                                withCredentials([usernamePassword(
+                                    credentialsId: params.AWS_CRED_ID,
+                                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                                )]) {
+                                    dir(params.TERRAFORM_DIR) {
+                                        echo 'Initializing Terraform (S3 backend, fallback creds)...'
+                                        runShell('terraform init -input=false -upgrade')
+
+                                        echo 'Planning infrastructure changes...'
+                                        runShell('terraform plan -input=false -out=tfplan')
+
+                                        echo 'Applying infrastructure changes...'
+                                        runShell('terraform apply -auto-approve tfplan')
+                                        echo 'Terraform provisioning complete.'
+                                    }
+                                }
+                            } catch (fallbackErr) {
+                                echo "WARNING: AWS credential '${params.AWS_CRED_ID}' not found in Jenkins."
+                                echo 'To fix: Manage Jenkins → Credentials → Add → AWS Credentials → ID: aws-credentials'
+                                unstable('Terraform skipped — AWS credentials not configured')
+                            }
+                        } else {
+                            echo "Terraform failed: ${msg}"
+                            throw err
                         }
                     }
                 }
