@@ -35,7 +35,9 @@ def runShellOut(String unixCmd, String winCmd = null) {
     if (isUnix()) {
         return sh(script: unixCmd, returnStdout: true).trim()
     }
-    return bat(script: (winCmd ?: unixCmd), returnStdout: true).trim()
+    // Prefix with @ to suppress command echo in bat output
+    def cmd = winCmd ?: unixCmd
+    return bat(script: "@${cmd}", returnStdout: true).trim()
 }
 
 pipeline {
@@ -112,14 +114,21 @@ pipeline {
                         echo "WARNING: Terraform is not installed (${err.message}). Terraform stages will be skipped."
                     }
 
-                    // Ansible — optional, only needed for configuration management
+                    // Ansible — runs via Docker if not natively available
                     env.ANSIBLE_AVAILABLE = 'false'
                     try {
                         runShell('ansible --version')
                         env.ANSIBLE_AVAILABLE = 'true'
-                        echo 'Ansible is available.'
+                        env.ANSIBLE_MODE = 'native'
+                        echo 'Ansible is available (native).'
                     } catch (err) {
-                        echo "WARNING: Ansible is not installed (${err.message}). Ansible stages will be skipped."
+                        if (env.DOCKER_AVAILABLE == 'true') {
+                            echo 'Ansible not installed natively — will run via Docker.'
+                            env.ANSIBLE_AVAILABLE = 'true'
+                            env.ANSIBLE_MODE = 'docker'
+                        } else {
+                            echo "WARNING: Ansible is not installed and Docker is unavailable. Ansible stages will be skipped."
+                        }
                     }
                 }
             }
@@ -339,6 +348,11 @@ pipeline {
                                 echo 'Applying infrastructure changes...'
                                 runShell('terraform apply -auto-approve tfplan')
                                 echo 'Terraform provisioning complete.'
+
+                                // Capture outputs for Ansible stage
+                                env.TF_EC2_IP = runShellOut('terraform output -raw ec2_public_ip', 'terraform output -raw ec2_public_ip')
+                                env.TF_RDS_ENDPOINT = runShellOut('terraform output -raw rds_hostname', 'terraform output -raw rds_hostname')
+                                echo "EC2 IP: ${env.TF_EC2_IP}, RDS: ${env.TF_RDS_ENDPOINT}"
                             }
                         }
                     } catch (err) {
@@ -361,6 +375,11 @@ pipeline {
                                         echo 'Applying infrastructure changes...'
                                         runShell('terraform apply -auto-approve tfplan')
                                         echo 'Terraform provisioning complete.'
+
+                                        // Capture outputs for Ansible stage
+                                        env.TF_EC2_IP = runShellOut('terraform output -raw ec2_public_ip', 'terraform output -raw ec2_public_ip')
+                                        env.TF_RDS_ENDPOINT = runShellOut('terraform output -raw rds_hostname', 'terraform output -raw rds_hostname')
+                                        echo "EC2 IP: ${env.TF_EC2_IP}, RDS: ${env.TF_RDS_ENDPOINT}"
                                     }
                                 }
                             } catch (fallbackErr) {
@@ -381,17 +400,49 @@ pipeline {
          *  STAGE 9 — Ansible Configuration (optional)
          * ============================================================ */
         stage('Ansible Configuration') {
-            when { expression { return params.RUN_ANSIBLE && env.ANSIBLE_AVAILABLE == 'true' } }
+            when { expression { return params.RUN_ANSIBLE && env.ANSIBLE_AVAILABLE == 'true' && env.TF_EC2_IP } }
             steps {
                 dir(params.ANSIBLE_DIR) {
                     script {
-                        echo 'Running Ansible configuration management...'
+                        echo "Running Ansible configuration for EC2: ${env.TF_EC2_IP}"
                         try {
-                            runShell('ansible-playbook -i inventory.ini site.yml')
+                            // Generate dynamic inventory from Terraform output
+                            def inventoryContent = """[app_servers]
+${env.TF_EC2_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/ansible/ems-keypair.pem
+
+[app_servers:vars]
+ansible_python_interpreter=/usr/bin/python3
+"""
+                            writeFile file: 'dynamic_inventory.ini', text: inventoryContent
+
+                            // Copy the private key from Terraform directory
+                            if (isUnix()) {
+                                sh "cp \"${WORKSPACE}/${params.TERRAFORM_DIR}/ems-keypair.pem\" ./ems-keypair.pem"
+                                sh 'chmod 600 ems-keypair.pem'
+                            } else {
+                                bat "copy \"${WORKSPACE}\\${params.TERRAFORM_DIR.replace('/', '\\')}\\ems-keypair.pem\" .\\ems-keypair.pem"
+                            }
+
+                            // Extra vars for the playbook
+                            def extraVars = "db_host=${env.TF_RDS_ENDPOINT ?: 'localhost'}"
+
+                            if (env.ANSIBLE_MODE == 'docker') {
+                                // Run Ansible via Docker (for Windows agents)
+                                def ansibleCmd = "docker run --rm " +
+                                    "-v \"${pwd()}:/ansible\" " +
+                                    "-w /ansible " +
+                                    "willhallonline/ansible:2.13-alpine-3.16 " +
+                                    "ansible-playbook -i dynamic_inventory.ini site.yml " +
+                                    "-e \"${extraVars}\" " +
+                                    "--ssh-extra-args='-o StrictHostKeyChecking=no'"
+                                runShell(ansibleCmd)
+                            } else {
+                                runShell("ansible-playbook -i dynamic_inventory.ini site.yml -e \"${extraVars}\" --ssh-extra-args='-o StrictHostKeyChecking=no'")
+                            }
                             echo 'Ansible configuration complete.'
                         } catch (err) {
                             echo "WARNING: Ansible playbook failed: ${err.getMessage()}"
-                            unstable('Ansible configuration failed — check inventory and connectivity')
+                            unstable('Ansible configuration failed — check connectivity to EC2')
                         }
                     }
                 }
@@ -421,7 +472,11 @@ pipeline {
                             'MYSQL_ROOT_PASSWORD=ems_deploy_root',
                             'JWT_SECRET=production-jwt-secret-change-this-in-env',
                         ]) {
-                            runShell('docker compose down --remove-orphans || true', 'docker compose down --remove-orphans || echo skipped')
+                            // Force-remove any leftover containers with explicit names to avoid conflicts
+                            runShell('docker rm -f ems-mysql ems-redis ems-backend ems-frontend ems-adminer 2>/dev/null || true',
+                                     'docker rm -f ems-mysql ems-redis ems-backend ems-frontend ems-adminer 2>nul || echo cleaned')
+                            runShell('docker compose down --remove-orphans --volumes || true',
+                                     'docker compose down --remove-orphans --volumes || echo skipped')
                             runShell('docker compose pull')
                             runShell('docker compose up -d --force-recreate')
                             runShell('docker compose ps')
