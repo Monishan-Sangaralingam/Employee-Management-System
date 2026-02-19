@@ -3,6 +3,38 @@
 #  Compatible with EC2 user_data bootstrap (signed-by keyring method)
 # ========================================================================
 ---
+# ── Fix any conflicting Docker APT sources first ──────────────────────────
+# user_data creates /etc/apt/sources.list.d/docker.list with signed-by.
+# A previous Ansible run may have created a second entry without signed-by
+# via the deprecated apt_key method. APT refuses to work with both present.
+
+- name: Remove conflicting Docker sources (without signed-by)
+  shell: |
+    # Remove any docker .list file that does NOT contain 'signed-by'
+    for f in /etc/apt/sources.list.d/docker*.list /etc/apt/sources.list.d/download_docker_com*.list; do
+      [ -f "$f" ] || continue
+      if grep -q 'download.docker.com' "$f" && ! grep -q 'signed-by' "$f"; then
+        rm -f "$f"
+        echo "Removed conflicting: $f"
+      fi
+    done
+    # Also clean inline entries in sources.list itself
+    if grep -q 'download.docker.com' /etc/apt/sources.list 2>/dev/null; then
+      sed -i '/download\.docker\.com/d' /etc/apt/sources.list
+      echo "Cleaned entries from sources.list"
+    fi
+    echo "Done"
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Remove stale Docker apt_key (legacy method)
+  shell: apt-key del $(apt-key list 2>/dev/null | grep -B1 -i docker | head -1 | awk '{print $NF}') 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+  ignore_errors: true
+
 - name: Install prerequisite packages
   apt:
     name:
@@ -37,12 +69,6 @@
   file:
     path: /etc/apt/keyrings/docker.gpg
     mode: '0644'
-
-- name: Remove old Docker apt_key entry (if any)
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: absent
-  ignore_errors: true
 
 - name: Add Docker APT repository (signed-by keyring)
   apt_repository:
