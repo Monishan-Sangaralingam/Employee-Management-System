@@ -321,18 +321,20 @@ pipeline {
         stage('Terraform Provisioning') {
             when { expression { return params.RUN_TERRAFORM && env.TERRAFORM_AVAILABLE == 'true' } }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
+                withCredentials([usernamePassword(
                     credentialsId: params.AWS_CRED_ID,
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                ]]) {
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
                     dir(params.TERRAFORM_DIR) {
                         script {
                             echo 'Initializing Terraform...'
                             runShell('terraform init -input=false')
                             echo 'Planning infrastructure changes...'
-                            runShell('terraform plan -out=tfplan')
+                            runShell(
+                                "terraform plan -var=\"aws_access_key=\$AWS_ACCESS_KEY_ID\" -var=\"aws_secret_key=\$AWS_SECRET_ACCESS_KEY\" -out=tfplan",
+                                "terraform plan -var=\"aws_access_key=%AWS_ACCESS_KEY_ID%\" -var=\"aws_secret_key=%AWS_SECRET_ACCESS_KEY%\" -out=tfplan"
+                            )
                             echo 'Applying infrastructure changes...'
                             runShell('terraform apply -auto-approve tfplan')
                             echo 'Terraform provisioning complete.'
