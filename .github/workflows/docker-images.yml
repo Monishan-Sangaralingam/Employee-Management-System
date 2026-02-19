@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -14,7 +14,6 @@ env:
   FRONTEND_CONTEXT: ems-fullstack
 
 jobs:
-
   # ────────────────────────────────────────────
   # 1. Build & Test  (parallel backend + frontend)
   # ────────────────────────────────────────────
@@ -33,7 +32,9 @@ jobs:
 
       - name: Build & Test (Maven)
         working-directory: ${{ env.BACKEND_CONTEXT }}
-        run: ./mvnw -B -DskipTests=false package
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -DskipTests=false package
 
       - name: Upload test results
         if: always()
@@ -90,7 +91,7 @@ jobs:
   # ────────────────────────────────────────────
   sonar-analysis:
     name: SonarCloud Analysis
-    needs: [ build-test-backend, build-test-frontend ]
+    needs: [build-test-backend, build-test-frontend]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
@@ -130,7 +131,7 @@ jobs:
   # ────────────────────────────────────────────
   docker-build-push:
     name: Docker Build & Push
-    needs: [ build-test-backend, build-test-frontend ]
+    needs: [build-test-backend, build-test-frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -191,7 +192,7 @@ jobs:
   # ────────────────────────────────────────────
   smoke-test:
     name: Docker Smoke Test
-    needs: [ docker-build-push ]
+    needs: [docker-build-push]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -252,7 +253,7 @@ jobs:
   # ────────────────────────────────────────────
   deploy:
     name: Deploy to Production
-    needs: [ smoke-test, docker-build-push ]
+    needs: [smoke-test, docker-build-push]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
