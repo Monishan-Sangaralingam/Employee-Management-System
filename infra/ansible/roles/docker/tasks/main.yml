@@ -1,5 +1,6 @@
 # ========================================================================
 #  Role: docker — Ensure Docker + Docker Compose are installed
+#  Compatible with EC2 user_data bootstrap (signed-by keyring method)
 # ========================================================================
 ---
 - name: Install prerequisite packages
@@ -15,15 +16,39 @@
     update_cache: true
     cache_valid_time: 3600
 
-- name: Add Docker GPG key
+- name: Create keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Check if Docker GPG keyring exists
+  stat:
+    path: /etc/apt/keyrings/docker.gpg
+  register: docker_gpg_key
+
+- name: Download Docker GPG key
+  shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+  when: not docker_gpg_key.stat.exists
+
+- name: Set GPG key permissions
+  file:
+    path: /etc/apt/keyrings/docker.gpg
+    mode: '0644'
+
+- name: Remove old Docker apt_key entry (if any)
   apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+    state: absent
+  ignore_errors: true
 
-- name: Add Docker APT repository
+- name: Add Docker APT repository (signed-by keyring)
   apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
     state: present
+    filename: docker
 
 - name: Install Docker Engine
   apt:
