@@ -6,12 +6,14 @@ variable "aws_access_key" {
   description = "AWS access key ID"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "aws_secret_key" {
   description = "AWS secret access key"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "aws_region" {
@@ -96,6 +98,7 @@ variable "db_password" {
   description = "MySQL master password"
   type        = string
   sensitive   = true
+  default     = "EmsDB2026Secure!xK9m"
 }
 
 variable "db_allocated_storage" {
@@ -116,6 +119,7 @@ variable "jwt_secret" {
   description = "JWT secret for the backend application"
   type        = string
   sensitive   = true
+  default     = "EmsProductionJwtSecret2026SuperSecureRandomKey99"
 }
 
 variable "allowed_ssh_cidrs" {
