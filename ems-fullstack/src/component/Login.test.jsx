@@ -35,7 +35,7 @@ describe('Login', () => {
 
         await user.type(screen.getByLabelText(/username/i), 'admin');
         await user.type(screen.getByLabelText(/password/i), 'secret');
-        await user.click(screen.getByRole('button', { name: /login/i }));
+        await user.click(screen.getByRole('button', { name: /sign in/i }));
 
         expect(login).toHaveBeenCalledWith('admin', 'secret');
         expect(await screen.findByText('Dashboard')).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe('Login', () => {
 
         await user.type(screen.getByLabelText(/username/i), 'admin');
         await user.type(screen.getByLabelText(/password/i), 'wrong');
-        await user.click(screen.getByRole('button', { name: /login/i }));
+        await user.click(screen.getByRole('button', { name: /sign in/i }));
 
         expect(await screen.findByText('Bad credentials')).toBeInTheDocument();
     });
