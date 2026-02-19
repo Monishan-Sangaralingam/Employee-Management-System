@@ -1,8 +1,26 @@
-/* Toast viewport (uses Bootstrap alert colors) */
+/* Toast viewport */
 .ems-toast-viewport {
     position: fixed;
     top: 12px;
     right: 12px;
     width: min(420px, calc(100vw - 24px));
     z-index: 1080;
+}
+
+.ems-toast-viewport .alert {
+    border-radius: var(--ems-radius-lg, 0.75rem);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .12);
+    animation: emsSlideIn 0.25s ease-out;
+}
+
+@keyframes emsSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }

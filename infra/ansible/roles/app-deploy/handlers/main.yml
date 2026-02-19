@@ -1,0 +1,6 @@
+# EMS — app-deploy handlers
+---
+- name: restart-ems
+  command: docker compose up -d --remove-orphans
+  args:
+    chdir: "{{ app_dir }}"

@@ -1,23 +1,54 @@
-@import url('https://fonts.googleapis.com/css?family=Poppins:200i,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-.st-ba {
-    background-color: #2B4056;
-    min-height: 90vh;
+/* ── Employee Form Page ───────────────────────────────────────────────── */
+.ems-form-page {
+    min-height: calc(100vh - 60px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem;
+    background:
+        radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, .06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(13, 148, 136, .05) 0%, transparent 40%),
+        var(--ems-bg);
 }
 
-.card-top {
-    width: 20rem;
-    padding: 1rem;
-    margin-top: 100px;
+.ems-form-card {
+    width: 100%;
+    max-width: 480px;
+    border-radius: var(--ems-radius-xl) !important;
+    box-shadow: var(--ems-shadow-lg);
+    overflow: hidden;
+}
+
+.ems-form-card .ems-form-header {
+    background: linear-gradient(135deg, var(--ems-primary), var(--ems-primary-light));
+    padding: 1.25rem 1.5rem;
+    text-align: center;
+}
+
+.ems-form-card .ems-form-header h4 {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.2rem;
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+.ems-form-card .card-body {
+    padding: 1.75rem 1.75rem 1.5rem;
 }
 
 @media (max-width: 576px) {
-    .card-top {
-        width: calc(100vw - 24px);
-        margin-top: 24px;
+    .ems-form-page {
+        padding: 1.5rem 0.75rem;
     }
-}
 
-.title {
-    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    .ems-form-card {
+        max-width: 100%;
+    }
+
+    .ems-form-card .card-body {
+        padding: 1.25rem;
+    }
 }

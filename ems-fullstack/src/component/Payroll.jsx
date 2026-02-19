@@ -133,8 +133,10 @@ function Payroll() {
   };
 
   return (
-    <div className="container" style={{ marginTop: 24, maxWidth: 820 }}>
-      <h3>Payroll</h3>
+    <div className="container ems-page-container" style={{ maxWidth: 820 }}>
+      <div className="ems-page-header">
+        <h3>Payroll</h3>
+      </div>
 
       {error ? <div className="alert alert-danger mt-3">{error}</div> : null}
       {success ? <div className="alert alert-success mt-3">{success}</div> : null}

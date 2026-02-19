@@ -1,0 +1,6 @@
+# EMS — monitoring handlers
+---
+- name: restart-monitoring
+  command: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d --remove-orphans
+  args:
+    chdir: "{{ app_dir }}"

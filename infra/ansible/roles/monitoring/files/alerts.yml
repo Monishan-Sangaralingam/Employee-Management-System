@@ -1,0 +1,20 @@
+groups:
+  - name: ems-alerts
+    rules:
+      - alert: BackendDown
+        expr: up{job="ems-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "EMS Backend is down"
+          description: "The ems-backend target has been unreachable for more than 2 minutes."
+
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate on EMS Backend"
+          description: "More than 0.5 req/s returning 5xx errors over 5 minutes."
