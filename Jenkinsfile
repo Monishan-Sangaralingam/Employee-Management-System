@@ -408,7 +408,7 @@ pipeline {
                         try {
                             // Generate dynamic inventory from Terraform output
                             def inventoryContent = """[app_servers]
-${env.TF_EC2_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/ansible/ems-keypair.pem
+${env.TF_EC2_IP} ansible_user=ubuntu ansible_ssh_private_key_file=./ems-keypair.pem
 
 [app_servers:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -435,13 +435,19 @@ ssh_args = -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 
                             if (env.ANSIBLE_MODE == 'docker') {
                                 // Run Ansible via Docker (for Windows agents)
+                                // Windows mounts give 0777 perms — SSH rejects world-readable keys.
+                                // Copy key to /tmp inside container and fix permissions before running.
                                 def ansibleCmd = "docker run --rm " +
-                                    "-v \"${pwd()}:/ansible\" " +
-                                    "-w /ansible " +
+                                    "-v \"${pwd()}:/ansible-src:ro\" " +
                                     "-e ANSIBLE_HOST_KEY_CHECKING=False " +
                                     "willhallonline/ansible:2.13-alpine-3.16 " +
-                                    "ansible-playbook -i dynamic_inventory.ini site.yml " +
-                                    "-e \"${extraVars}\""
+                                    "sh -c \"" +
+                                        "cp -r /ansible-src /ansible-run && " +
+                                        "chmod 600 /ansible-run/ems-keypair.pem && " +
+                                        "cd /ansible-run && " +
+                                        "ansible-playbook -i dynamic_inventory.ini site.yml " +
+                                        "-e \\\"${extraVars}\\\"" +
+                                    "\""
                                 runShell(ansibleCmd)
                             } else {
                                 runShell("ansible-playbook -i dynamic_inventory.ini site.yml -e \"${extraVars}\"")
