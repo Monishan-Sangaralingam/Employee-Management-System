@@ -1,0 +1,37 @@
+# EMS Monitoring Stack (managed by Ansible)
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: ems-prometheus
+    restart: unless-stopped
+    volumes:
+      - {{ app_dir }}/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - {{ app_dir }}/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: ems-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - {{ app_dir }}/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

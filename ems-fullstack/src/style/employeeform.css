@@ -2,50 +2,53 @@
 
 /* ── Employee Form Page ───────────────────────────────────────────────── */
 .ems-form-page {
-  min-height: calc(100vh - 60px);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 3rem 1rem;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(99,102,241,.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(13,148,136,.05) 0%, transparent 40%),
-    var(--ems-bg);
+    min-height: calc(100vh - 60px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem;
+    background:
+        radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, .06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(13, 148, 136, .05) 0%, transparent 40%),
+        var(--ems-bg);
 }
 
 .ems-form-card {
-  width: 100%;
-  max-width: 480px;
-  border-radius: var(--ems-radius-xl) !important;
-  box-shadow: var(--ems-shadow-lg);
-  overflow: hidden;
+    width: 100%;
+    max-width: 480px;
+    border-radius: var(--ems-radius-xl) !important;
+    box-shadow: var(--ems-shadow-lg);
+    overflow: hidden;
 }
 
 .ems-form-card .ems-form-header {
-  background: linear-gradient(135deg, var(--ems-primary), var(--ems-primary-light));
-  padding: 1.25rem 1.5rem;
-  text-align: center;
+    background: linear-gradient(135deg, var(--ems-primary), var(--ems-primary-light));
+    padding: 1.25rem 1.5rem;
+    text-align: center;
 }
+
 .ems-form-card .ems-form-header h4 {
-  color: #fff;
-  font-weight: 700;
-  font-size: 1.2rem;
-  margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.2rem;
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
 .ems-form-card .card-body {
-  padding: 1.75rem 1.75rem 1.5rem;
+    padding: 1.75rem 1.75rem 1.5rem;
 }
 
 @media (max-width: 576px) {
-  .ems-form-page {
-    padding: 1.5rem 0.75rem;
-  }
-  .ems-form-card {
-    max-width: 100%;
-  }
-  .ems-form-card .card-body {
-    padding: 1.25rem;
-  }
+    .ems-form-page {
+        padding: 1.5rem 0.75rem;
+    }
+
+    .ems-form-card {
+        max-width: 100%;
+    }
+
+    .ems-form-card .card-body {
+        padding: 1.25rem;
+    }
 }

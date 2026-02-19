@@ -1,0 +1,56 @@
+# ========================================================================
+#  Role: monitoring — Deploy Prometheus + Grafana alongside the app
+# ========================================================================
+---
+- name: Create monitoring directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"
+  loop:
+    - "{{ app_dir }}/monitoring"
+    - "{{ app_dir }}/monitoring/grafana/provisioning/datasources"
+
+- name: Copy Prometheus config
+  copy:
+    src: prometheus.yml
+    dest: "{{ app_dir }}/monitoring/prometheus.yml"
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+  notify: restart-monitoring
+
+- name: Copy alert rules
+  copy:
+    src: alerts.yml
+    dest: "{{ app_dir }}/monitoring/alerts.yml"
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+  notify: restart-monitoring
+
+- name: Copy Grafana datasource config
+  copy:
+    src: datasource.yml
+    dest: "{{ app_dir }}/monitoring/grafana/provisioning/datasources/datasource.yml"
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+  notify: restart-monitoring
+
+- name: Write monitoring docker-compose overlay
+  template:
+    src: docker-compose.monitoring.yml.j2
+    dest: "{{ app_dir }}/docker-compose.monitoring.yml"
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+  notify: restart-monitoring
+
+- name: Start monitoring stack
+  command: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d --remove-orphans
+  args:
+    chdir: "{{ app_dir }}"
+  changed_when: true

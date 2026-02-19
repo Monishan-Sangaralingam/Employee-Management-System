@@ -1,0 +1,55 @@
+# ========================================================================
+#  Role: docker — Ensure Docker + Docker Compose are installed
+# ========================================================================
+---
+- name: Install prerequisite packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker APT repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+    state: present
+
+- name: Install Docker Engine
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add ubuntu user to docker group
+  user:
+    name: ubuntu
+    groups: docker
+    append: true
+
+- name: Install Docker Python SDK (for Ansible modules)
+  pip:
+    name:
+      - docker
+      - docker-compose
+    state: present

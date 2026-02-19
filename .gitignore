@@ -6,3 +6,17 @@
 
 # Monitoring data volumes (created by docker compose)
 /monitoring/*_data/
+
+# Terraform — sensitive state and variable files
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+tfplan
+crash.log
+*.pem
+
+# Ansible — retry files
+*.retry

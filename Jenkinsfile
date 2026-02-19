@@ -60,16 +60,17 @@ pipeline {
         string(name: 'DOCKER_REGISTRY',    defaultValue: 'docker.io/monishan8130', description: 'Registry prefix (docker.io/<user>)')
         string(name: 'DOCKER_CRED_ID',     defaultValue: 'dockerhub-cred',          description: 'Jenkins credential ID for Docker Hub login')
 
-        booleanParam(name: 'DEPLOY',       defaultValue: false,                     description: 'Deploy after push (Compose or K8s)')
+        booleanParam(name: 'DEPLOY',       defaultValue: true,                      description: 'Deploy after push (Compose or K8s)')
         choice(name: 'DEPLOY_TARGET',      choices: ['compose', 'kubernetes'],       description: 'Deployment target')
         string(name: 'DEPLOY_PATH',        defaultValue: 'C:\\ems-deploy',           description: 'Local path with docker-compose.yml (Compose deploy)')
         string(name: 'K8S_NAMESPACE',      defaultValue: 'ems',                     description: 'Kubernetes namespace')
         string(name: 'KUBECONFIG_CRED_ID', defaultValue: 'kubeconfig',              description: 'Jenkins credential for kubeconfig file')
 
-        booleanParam(name: 'RUN_TERRAFORM', defaultValue: false,                    description: 'Run Terraform infrastructure provisioning')
-        booleanParam(name: 'RUN_ANSIBLE',   defaultValue: false,                    description: 'Run Ansible configuration management')
+        booleanParam(name: 'RUN_TERRAFORM', defaultValue: true,                     description: 'Run Terraform infrastructure provisioning')
+        booleanParam(name: 'RUN_ANSIBLE',   defaultValue: true,                     description: 'Run Ansible configuration management')
         string(name: 'TERRAFORM_DIR',       defaultValue: 'infra/terraform',       description: 'Path to Terraform files')
         string(name: 'ANSIBLE_DIR',         defaultValue: 'infra/ansible',         description: 'Path to Ansible playbooks')
+        string(name: 'AWS_CRED_ID',         defaultValue: 'aws-credentials',       description: 'Jenkins credential ID for AWS access (type: AWS Credentials)')
     }
 
     stages {
@@ -99,6 +100,26 @@ pipeline {
                     } catch (err) {
                         echo "WARNING: Docker is not available (${err.message}). Docker-dependent stages will be skipped."
                         unstable('Docker daemon is not running — Docker stages will be skipped.')
+                    }
+
+                    // Terraform — optional, only needed for infra provisioning
+                    env.TERRAFORM_AVAILABLE = 'false'
+                    try {
+                        runShell('terraform --version')
+                        env.TERRAFORM_AVAILABLE = 'true'
+                        echo 'Terraform is available.'
+                    } catch (err) {
+                        echo "WARNING: Terraform is not installed (${err.message}). Terraform stages will be skipped."
+                    }
+
+                    // Ansible — optional, only needed for configuration management
+                    env.ANSIBLE_AVAILABLE = 'false'
+                    try {
+                        runShell('ansible --version')
+                        env.ANSIBLE_AVAILABLE = 'true'
+                        echo 'Ansible is available.'
+                    } catch (err) {
+                        echo "WARNING: Ansible is not installed (${err.message}). Ansible stages will be skipped."
                     }
                 }
             }
@@ -298,13 +319,24 @@ pipeline {
          *  STAGE 8 — Terraform Provisioning (optional)
          * ============================================================ */
         stage('Terraform Provisioning') {
-            when { expression { return params.RUN_TERRAFORM } }
+            when { expression { return params.RUN_TERRAFORM && env.TERRAFORM_AVAILABLE == 'true' } }
             steps {
-                dir(params.TERRAFORM_DIR) {
-                    script {
-                        runShell('terraform init -input=false')
-                        runShell('terraform plan -out=tfplan')
-                        runShell('terraform apply -auto-approve tfplan')
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: params.AWS_CRED_ID,
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    dir(params.TERRAFORM_DIR) {
+                        script {
+                            echo 'Initializing Terraform...'
+                            runShell('terraform init -input=false')
+                            echo 'Planning infrastructure changes...'
+                            runShell('terraform plan -out=tfplan')
+                            echo 'Applying infrastructure changes...'
+                            runShell('terraform apply -auto-approve tfplan')
+                            echo 'Terraform provisioning complete.'
+                        }
                     }
                 }
             }
@@ -314,11 +346,13 @@ pipeline {
          *  STAGE 9 — Ansible Configuration (optional)
          * ============================================================ */
         stage('Ansible Configuration') {
-            when { expression { return params.RUN_ANSIBLE } }
+            when { expression { return params.RUN_ANSIBLE && env.ANSIBLE_AVAILABLE == 'true' } }
             steps {
                 dir(params.ANSIBLE_DIR) {
                     script {
+                        echo 'Running Ansible configuration management...'
                         runShell('ansible-playbook -i inventory.ini site.yml')
+                        echo 'Ansible configuration complete.'
                     }
                 }
             }
@@ -328,7 +362,7 @@ pipeline {
          *  STAGE 10 — Deploy (Kubernetes or Docker Compose)
          * ============================================================ */
         stage('Deploy') {
-            when { expression { return params.DEPLOY } }
+            when { expression { return params.DEPLOY && env.DOCKER_AVAILABLE == 'true' } }
             steps {
                 script {
                     if (params.DEPLOY_TARGET == 'kubernetes') {
@@ -360,7 +394,7 @@ pipeline {
          *  STAGE 11 — Monitoring & Logging
          * ============================================================ */
         stage('Monitoring & Logging') {
-            when { expression { return params.DEPLOY } }
+            when { expression { return params.DEPLOY && env.DOCKER_AVAILABLE == 'true' } }
             steps {
                 script {
                     echo 'Post-deploy health checks'

@@ -1,0 +1,31 @@
+# ========================================================================
+#  EMS — Ansible Site Playbook
+#  Configures the EC2 instance and deploys the EMS application
+# ========================================================================
+---
+- name: Configure EMS Application Server
+  hosts: app_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    docker_registry: "docker.io/monishan8130"
+    image_tag: "latest"
+    app_dir: /opt/ems
+    data_dir: /opt/ems/data/uploads
+
+    # Database (override via --extra-vars or vault)
+    db_url: "jdbc:mysql://{{ db_host | default('localhost') }}:{{ db_port | default('3306') }}/{{ db_name | default('employee') }}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+    db_user: "{{ lookup('env', 'DB_USER') | default('ems_user', true) }}"
+    db_password: "{{ lookup('env', 'DB_PASSWORD') | default('changeme', true) }}"
+
+    # App settings
+    jwt_secret: "{{ lookup('env', 'JWT_SECRET') | default('changeme-jwt', true) }}"
+    jwt_ttl_ms: 3600000
+    epf_employee_percent: 8
+    epf_employer_percent: 12
+
+  roles:
+    - docker
+    - app-deploy
+    - monitoring
