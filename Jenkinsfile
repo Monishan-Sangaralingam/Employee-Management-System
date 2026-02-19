@@ -321,23 +321,34 @@ pipeline {
         stage('Terraform Provisioning') {
             when { expression { return params.RUN_TERRAFORM && env.TERRAFORM_AVAILABLE == 'true' } }
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: params.AWS_CRED_ID,
-                    usernameVariable: 'AWS_ACCESS_KEY_ID',
-                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                )]) {
-                    dir(params.TERRAFORM_DIR) {
-                        script {
-                            echo 'Initializing Terraform...'
-                            runShell('terraform init -input=false')
-                            echo 'Planning infrastructure changes...'
-                            runShell(
-                                "terraform plan -var=\"aws_access_key=\$AWS_ACCESS_KEY_ID\" -var=\"aws_secret_key=\$AWS_SECRET_ACCESS_KEY\" -out=tfplan",
-                                "terraform plan -var=\"aws_access_key=%AWS_ACCESS_KEY_ID%\" -var=\"aws_secret_key=%AWS_SECRET_ACCESS_KEY%\" -out=tfplan"
-                            )
-                            echo 'Applying infrastructure changes...'
-                            runShell('terraform apply -auto-approve tfplan')
-                            echo 'Terraform provisioning complete.'
+                script {
+                    try {
+                        withCredentials([usernamePassword(
+                            credentialsId: params.AWS_CRED_ID,
+                            usernameVariable: 'TF_VAR_aws_access_key',
+                            passwordVariable: 'TF_VAR_aws_secret_key'
+                        )]) {
+                            dir(params.TERRAFORM_DIR) {
+                                echo 'Initializing Terraform...'
+                                runShell('terraform init -input=false -upgrade')
+
+                                echo 'Planning infrastructure changes...'
+                                runShell('terraform plan -input=false -out=tfplan')
+
+                                echo 'Applying infrastructure changes...'
+                                runShell('terraform apply -auto-approve tfplan')
+                                echo 'Terraform provisioning complete.'
+                            }
+                        }
+                    } catch (err) {
+                        def msg = err.getMessage() ?: ''
+                        if (msg.contains('Could not find credentials') || msg.contains('credentials')) {
+                            echo "WARNING: AWS credential '${params.AWS_CRED_ID}' not found in Jenkins. Skipping Terraform."
+                            echo 'To fix: Manage Jenkins → Credentials → Add → Username with password → ID: aws-credentials'
+                            unstable('Terraform skipped — AWS credentials not configured in Jenkins')
+                        } else {
+                            echo "Terraform failed: ${msg}"
+                            throw err
                         }
                     }
                 }
@@ -353,8 +364,13 @@ pipeline {
                 dir(params.ANSIBLE_DIR) {
                     script {
                         echo 'Running Ansible configuration management...'
-                        runShell('ansible-playbook -i inventory.ini site.yml')
-                        echo 'Ansible configuration complete.'
+                        try {
+                            runShell('ansible-playbook -i inventory.ini site.yml')
+                            echo 'Ansible configuration complete.'
+                        } catch (err) {
+                            echo "WARNING: Ansible playbook failed: ${err.getMessage()}"
+                            unstable('Ansible configuration failed — check inventory and connectivity')
+                        }
                     }
                 }
             }
