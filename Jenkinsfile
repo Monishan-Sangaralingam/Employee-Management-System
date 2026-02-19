@@ -321,14 +321,18 @@ pipeline {
         stage('Terraform Provisioning') {
             when { expression { return params.RUN_TERRAFORM && env.TERRAFORM_AVAILABLE == 'true' } }
             steps {
-                script {
-                    try {
-                        withCredentials([usernamePassword(
-                            credentialsId: params.AWS_CRED_ID,
-                            usernameVariable: 'TF_VAR_aws_access_key',
-                            passwordVariable: 'TF_VAR_aws_secret_key'
-                        )]) {
-                            dir(params.TERRAFORM_DIR) {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: params.AWS_CRED_ID,
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                ]]) {
+                    withEnv([
+                        "TF_VAR_aws_access_key=${AWS_ACCESS_KEY_ID}",
+                        "TF_VAR_aws_secret_key=${AWS_SECRET_ACCESS_KEY}"
+                    ]) {
+                        dir(params.TERRAFORM_DIR) {
+                            script {
                                 echo 'Initializing Terraform...'
                                 runShell('terraform init -input=false -upgrade')
 
@@ -339,16 +343,6 @@ pipeline {
                                 runShell('terraform apply -auto-approve tfplan')
                                 echo 'Terraform provisioning complete.'
                             }
-                        }
-                    } catch (err) {
-                        def msg = err.getMessage() ?: ''
-                        if (msg.contains('Could not find credentials') || msg.contains('credentials')) {
-                            echo "WARNING: AWS credential '${params.AWS_CRED_ID}' not found in Jenkins. Skipping Terraform."
-                            echo 'To fix: Manage Jenkins → Credentials → Add → Username with password → ID: aws-credentials'
-                            unstable('Terraform skipped — AWS credentials not configured in Jenkins')
-                        } else {
-                            echo "Terraform failed: ${msg}"
-                            throw err
                         }
                     }
                 }
@@ -399,8 +393,9 @@ pipeline {
                             'MYSQL_ROOT_PASSWORD=ems_deploy_root',
                             'JWT_SECRET=production-jwt-secret-change-this-in-env',
                         ]) {
+                            runShell('docker compose down --remove-orphans || true', 'docker compose down --remove-orphans || echo skipped')
                             runShell('docker compose pull')
-                            runShell('docker compose up -d')
+                            runShell('docker compose up -d --force-recreate')
                             runShell('docker compose ps')
                         }
                     }
