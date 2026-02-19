@@ -426,18 +426,25 @@ ansible_python_interpreter=/usr/bin/python3
                             // Extra vars for the playbook
                             def extraVars = "db_host=${env.TF_RDS_ENDPOINT ?: 'localhost'}"
 
+                            // Write ansible.cfg to disable host key checking (avoids quoting issues)
+                            writeFile file: 'ansible.cfg', text: """[defaults]
+host_key_checking = False
+[ssh_connection]
+ssh_args = -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+"""
+
                             if (env.ANSIBLE_MODE == 'docker') {
                                 // Run Ansible via Docker (for Windows agents)
                                 def ansibleCmd = "docker run --rm " +
                                     "-v \"${pwd()}:/ansible\" " +
                                     "-w /ansible " +
+                                    "-e ANSIBLE_HOST_KEY_CHECKING=False " +
                                     "willhallonline/ansible:2.13-alpine-3.16 " +
                                     "ansible-playbook -i dynamic_inventory.ini site.yml " +
-                                    "-e \"${extraVars}\" " +
-                                    "--ssh-extra-args='-o StrictHostKeyChecking=no'"
+                                    "-e \"${extraVars}\""
                                 runShell(ansibleCmd)
                             } else {
-                                runShell("ansible-playbook -i dynamic_inventory.ini site.yml -e \"${extraVars}\" --ssh-extra-args='-o StrictHostKeyChecking=no'")
+                                runShell("ansible-playbook -i dynamic_inventory.ini site.yml -e \"${extraVars}\"")
                             }
                             echo 'Ansible configuration complete.'
                         } catch (err) {
@@ -500,8 +507,14 @@ ansible_python_interpreter=/usr/bin/python3
                             runShell("kubectl logs deployment/ems-backend -n ${params.K8S_NAMESPACE} --tail=30")
                         }
                     } else {
-                        runShell('docker compose ps')
-                        runShell('docker compose logs --tail=30 ems-backend ems-frontend')
+                        withEnv([
+                            'MYSQL_PASSWORD=ems_deploy_pass',
+                            'MYSQL_ROOT_PASSWORD=ems_deploy_root',
+                            'JWT_SECRET=production-jwt-secret-change-this-in-env',
+                        ]) {
+                            runShell('docker compose ps')
+                            runShell('docker compose logs --tail=30 ems-backend ems-frontend')
+                        }
                     }
                 }
             }
