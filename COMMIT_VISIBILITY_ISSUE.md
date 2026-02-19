@@ -31,7 +31,7 @@ git fetch --unshallow
 This command:
 - Downloaded the complete Git history (476 objects)
 - Removed the shallow clone limitation
-- Made all 34 commits visible locally
+- Made all 35 commits visible locally
 - Fixed the "grafted" commit indicator
 
 #### 2. Updated GitHub Actions Workflow
@@ -55,7 +55,7 @@ Created a `.gitattributes` file to ensure:
 After unshallowing, I verified:
 - ✅ All commits are now visible in the full Git history
 - ✅ The last 2 commits (b00abea and e1dc77d) are properly displayed
-- ✅ The repository now has the complete history (34 commits)
+- ✅ The repository now has the complete history (35 commits)
 - ✅ GitHub shows the commits correctly
 
 ## Why This Happened
@@ -84,8 +84,10 @@ If you're using GitHub Actions, ensure your workflows fetch complete history whe
 ```yaml
 - uses: actions/checkout@v4
   with:
-    fetch-depth: 0  # 0 means fetch all history
+    fetch-depth: 0  # 0 means fetch all history (instead of default 1)
 ```
+
+This has been applied to all jobs in `.github/workflows/docker-images.yml`.
 
 ### Check if Repository is Shallow
 You can always check if your repository is shallow:
