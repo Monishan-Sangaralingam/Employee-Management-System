@@ -1,4 +1,6 @@
-import { api } from './axiosInstance';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:8090';
 const TOKEN_KEY = 'ems_token';
 
 function base64UrlDecode(input) {
@@ -66,7 +68,7 @@ export function getEmployeeIdFromToken(token = getToken()) {
 }
 
 export async function login(username, password) {
-  const response = await api.post('/api/auth/login', {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
     username,
     password,
   });

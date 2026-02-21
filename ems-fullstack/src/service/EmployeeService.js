@@ -1,4 +1,19 @@
-import { api } from './axiosInstance';
+import axios from "axios";
+
+import { getToken } from "./AuthService";
+
+const api = axios.create({
+    baseURL: import.meta.env.VITE_API_URL,
+});
+
+api.interceptors.request.use((config) => {
+    const token = getToken();
+    if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
 
 const URL = "/api/emp";
 
