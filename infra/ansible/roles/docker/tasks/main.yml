@@ -52,7 +52,7 @@
   file:
     path: /etc/apt/keyrings
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Check if Docker GPG keyring exists
   stat:
@@ -68,7 +68,7 @@
 - name: Set GPG key permissions
   file:
     path: /etc/apt/keyrings/docker.gpg
-    mode: '0644'
+    mode: "0644"
 
 - name: Add Docker APT repository (signed-by keyring)
   apt_repository:
