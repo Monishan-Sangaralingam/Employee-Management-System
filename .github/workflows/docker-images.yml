@@ -389,14 +389,36 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
             echo "📋 Writing .env file..."
-            cat > .env <<-ENVEOF
-            MYSQL_PASSWORD=${MYSQL_PASSWORD}
-            MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-            JWT_SECRET=${JWT_SECRET}
-            CORS_ALLOWED_ORIGIN_PATTERNS=*
-            ENVEOF
-            # Remove leading whitespace from .env
-            sed -i 's/^[[:space:]]*//' .env
+            cat > .env << 'ENVEOF'
+# ──────────────────────────────────────────────
+# EMS Production Environment  (docker-compose)
+# ──────────────────────────────────────────────
+
+# ── MySQL container ───────────────────────────
+MYSQL_DATABASE=employee
+MYSQL_USER=ems_user
+ENVEOF
+
+            # Append secrets (not single-quoted so vars expand)
+            OWNER_LC=$(echo "$GHCR_USER" | tr '[:upper:]' '[:lower:]')
+            cat >> .env <<ENVEOF
+MYSQL_PASSWORD=${MYSQL_PASSWORD}
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+
+# ── Backend (Spring Boot) ─────────────────────
+JWT_SECRET=${JWT_SECRET}
+JWT_TTL_MS=3600000
+CORS_ALLOWED_ORIGIN_PATTERNS=*
+EPF_EMPLOYEE_PERCENT=8
+EPF_EMPLOYER_PERCENT=12
+
+# ── Docker image registry ─────────────────────
+DOCKER_REGISTRY=ghcr.io/${OWNER_LC}
+IMAGE_TAG=${IMAGE_TAG:-latest}
+ENVEOF
+
+            echo "✅ .env written"
+            cat .env | grep -v PASSWORD | grep -v SECRET
 
             echo "⬇️  Pulling latest images..."
             docker compose pull 2>/dev/null || true
