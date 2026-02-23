@@ -426,11 +426,14 @@ ansible_python_interpreter=/usr/bin/python3
                             // Extra vars for the playbook
                             def extraVars = "db_host=${env.TF_RDS_ENDPOINT ?: 'localhost'}"
 
-                            // Write ansible.cfg to disable host key checking (avoids quoting issues)
+                            // Write ansible.cfg to disable host key checking and set SSH keepalive
                             writeFile file: 'ansible.cfg', text: """[defaults]
 host_key_checking = False
+timeout = 60
+
 [ssh_connection]
-ssh_args = -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+ssh_args = -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o ConnectTimeout=60
+pipelining = True
 """
 
                             if (env.ANSIBLE_MODE == 'docker') {
