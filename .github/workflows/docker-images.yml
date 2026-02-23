@@ -259,6 +259,15 @@ jobs:
   # ────────────────────────────────────────────
   # 5. Deploy  (SSH to production server)
   # ────────────────────────────────────────────
+  # Uses AWS CLI to dynamically resolve the EC2 public IP at deploy time.
+  # This works even if the instance is stopped/started (Elastic IP assigned),
+  # or if you ever swap the instance — just update EC2_INSTANCE_ID.
+  #
+  # Required GitHub config:
+  #   Secrets:  AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, DEPLOY_SSH_KEY
+  #   Vars:     EC2_INSTANCE_ID, EC2_REGION (defaults below)
+  #             DEPLOY_USER (default: ubuntu), DEPLOY_PATH (default: /opt/ems)
+  # ────────────────────────────────────────────
   deploy:
     name: Deploy to Production
     needs: [smoke-test, docker-build-push]
@@ -273,33 +282,136 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Deploy via SSH
-        if: vars.DEPLOY_HOST != ''
-        uses: appleboy/ssh-action@v1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ vars.DEPLOY_HOST }}
-          username: ${{ vars.DEPLOY_USER || 'deploy' }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.EC2_REGION || 'eu-north-1' }}
+
+      - name: Whitelist runner IP for SSH
+        id: ssh_access
+        run: |
+          RUNNER_IP=$(curl -sf https://checkip.amazonaws.com)
+          REGION="${{ vars.EC2_REGION || 'eu-north-1' }}"
+          SG_ID="${{ vars.EC2_SG_ID || 'sg-0e2eb5f37d61f471f' }}"
+
+          echo "🔓 Adding runner IP $RUNNER_IP/32 to SG $SG_ID for SSH..."
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "$RUNNER_IP/32" \
+            --region "$REGION" || true
+
+          echo "runner_ip=$RUNNER_IP" >> $GITHUB_OUTPUT
+          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
+          echo "region=$REGION" >> $GITHUB_OUTPUT
+
+      - name: Resolve EC2 public IP
+        id: ec2
+        run: |
+          INSTANCE_ID="${{ vars.EC2_INSTANCE_ID || 'i-0c6305b23a37972cb' }}"
+          REGION="${{ vars.EC2_REGION || 'eu-north-1' }}"
+
+          echo "🔍 Looking up instance $INSTANCE_ID in $REGION..."
+
+          # Ensure instance is running
+          STATE=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --region "$REGION" \
+            --query "Reservations[0].Instances[0].State.Name" \
+            --output text)
+
+          if [ "$STATE" != "running" ]; then
+            echo "❌ Instance is '$STATE', not running. Starting it..."
+            aws ec2 start-instances --instance-ids "$INSTANCE_ID" --region "$REGION"
+            echo "⏳ Waiting for instance to be running..."
+            aws ec2 wait instance-running --instance-ids "$INSTANCE_ID" --region "$REGION"
+            echo "⏳ Waiting for status checks..."
+            aws ec2 wait instance-status-ok --instance-ids "$INSTANCE_ID" --region "$REGION"
+          fi
+
+          # Get public IP (works with both Elastic IP and dynamic IP)
+          HOST=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --region "$REGION" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --output text)
+
+          if [ -z "$HOST" ] || [ "$HOST" = "None" ]; then
+            echo "❌ Could not resolve public IP for $INSTANCE_ID"
+            exit 1
+          fi
+
+          echo "✅ Resolved EC2 IP: $HOST"
+          echo "host=$HOST" >> $GITHUB_OUTPUT
+
+      - name: Copy compose files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.ec2.outputs.host }}
+          username: ${{ vars.DEPLOY_USER || 'ubuntu' }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          source: "docker-compose.yml,docker-compose.prod.yml"
+          target: ${{ vars.DEPLOY_PATH || '/opt/ems' }}
+          strip_components: 0
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE_TAG: ${{ needs.docker-build-push.outputs.image_tag }}
+          BACKEND_IMAGE: ${{ needs.docker-build-push.outputs.backend_image }}
+          FRONTEND_IMAGE: ${{ needs.docker-build-push.outputs.frontend_image }}
+        with:
+          host: ${{ steps.ec2.outputs.host }}
+          username: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          command_timeout: 10m
+          envs: MYSQL_PASSWORD,MYSQL_ROOT_PASSWORD,JWT_SECRET,GHCR_TOKEN,GHCR_USER,IMAGE_TAG,BACKEND_IMAGE,FRONTEND_IMAGE
           script: |
             set -e
-            cd ${{ vars.DEPLOY_PATH || '/opt/ems' }}
+            DEPLOY_DIR="${{ vars.DEPLOY_PATH || '/opt/ems' }}"
+
+            # Ensure deploy directory exists
+            sudo mkdir -p "$DEPLOY_DIR"
+            sudo chown $(whoami):$(whoami) "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
 
             echo "🔑 Logging in to GHCR..."
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            echo "📋 Writing .env file..."
+            cat > .env <<-ENVEOF
+            MYSQL_PASSWORD=${MYSQL_PASSWORD}
+            MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+            JWT_SECRET=${JWT_SECRET}
+            CORS_ALLOWED_ORIGIN_PATTERNS=*
+            ENVEOF
+            # Remove leading whitespace from .env
+            sed -i 's/^[[:space:]]*//' .env
 
             echo "⬇️  Pulling latest images..."
-            docker compose pull
+            docker compose pull 2>/dev/null || true
 
             echo "🚀 Starting services..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate
 
             echo "🩺 Checking health..."
-            sleep 10
+            sleep 15
             docker compose ps
 
             echo "✅ Deployment complete!"
 
       - name: Deploy summary
+        if: always()
         run: |
           echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -307,5 +419,20 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Image Tag** | \`${{ needs.docker-build-push.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **EC2 Host** | \`${{ steps.ec2.outputs.host || 'N/A' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Instance** | \`${{ vars.EC2_INSTANCE_ID || 'i-0c6305b23a37972cb' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | \`${{ vars.EC2_REGION || 'eu-north-1' }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Triggered by** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Revoke runner SSH access
+        if: always()
+        run: |
+          echo "🔒 Removing runner IP ${{ steps.ssh_access.outputs.runner_ip }}/32 from SG..."
+          aws ec2 revoke-security-group-ingress \
+            --group-id "${{ steps.ssh_access.outputs.sg_id }}" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "${{ steps.ssh_access.outputs.runner_ip }}/32" \
+            --region "${{ steps.ssh_access.outputs.region }}" || true
+          echo "✅ SSH access revoked"
