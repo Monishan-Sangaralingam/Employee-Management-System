@@ -59,7 +59,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'DOCKER_REGISTRY',    defaultValue: 'docker.io/monishan8130', description: 'Registry prefix (docker.io/<user>)')
+        string(name: 'DOCKER_REGISTRY',    defaultValue: 'docker.io/monishan13', description: 'Registry prefix (docker.io/<user>)')
         string(name: 'DOCKER_CRED_ID',     defaultValue: 'dockerhub-cred',          description: 'Jenkins credential ID for Docker Hub login')
 
         booleanParam(name: 'DEPLOY',       defaultValue: true,                      description: 'Deploy after push (Compose or K8s)')
