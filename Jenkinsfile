@@ -275,7 +275,7 @@ pipeline {
             when { expression { return env.DOCKER_AVAILABLE == 'true' } }
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: params.DOCKER_CRED_ID,
+                    credentialsId: 'DOCKER_CRED_ID',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
